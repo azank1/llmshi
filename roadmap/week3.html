@@ -14,59 +14,72 @@
 <div class="lecture-page">
 <div class="breadcrumb"><a href="index.html">Home</a> / Week 3</div>
 <h1>Lectures 03 &amp; 3b — RAG &amp; Tool Augmentation</h1>
-<div class="meta">33 + 22 slides · Toolformer paper (17pp) · Lab 3: RAG Implementation</div>
+<div class="meta">33 + 22 slides · Toolformer paper · Lab 3: RAG Implementation</div>
 
-<div class="lec-section"><h2>Slide Content — L03 RAG</h2><div id="slides1"></div></div>
-<div class="lec-section"><h2>Slide Content — L3b Tool Augmentation</h2><div id="slides2"></div></div>
+<div class="lec-section"><h2>Slide Content — L03 Retrieval Augmented Generation</h2><div id="slides1"></div></div>
+<div class="lec-section"><h2>Slide Content — L3b Tool Augmentation &amp; Function Calling</h2><div id="slides2"></div></div>
+<div class="lec-section"><h2>Architecture &amp; Flow Diagrams</h2><div id="diagrams"></div></div>
 <div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
-<div class="lec-section"><h2>Dry Run — Vector Search</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Dry Run — Vector Search &amp; RAG Pipeline</h2><div id="dryrun"></div></div>
 <div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
 <div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
 </div>
 <script src="js/lecture.js"></script>
 <script>
 renderSlides('slides1', [
-  ['LLM Problems: Hallucinations','Models generate plausible but factually wrong information'],
-  ['Problems: Lack of Attribution','No source citations — can\'t verify claims'],
-  ['Problems: Cost of Training','Training on all knowledge is expensive and stale'],
-  ['Problems: Copyright &amp; Privacy','Training data may contain copyrighted/private info'],
-  ['Problems: Long-Tail Info','LLMs struggle with rare/specialized knowledge'],
-  ['RAG Overview','GOAL: Find subset of documents similar to query, feed as context'],
-  ['Retrieval Methods','Traditional databases vs Vector databases for semantic search'],
-  ['Vector Databases','Store vector embeddings for fast retrieval and similarity search'],
-  ['How Vector DBs Work','Use similarity metric (cosine, dot product) to find nearest vectors'],
-  ['Approximate Nearest Neighbor (ANN)','kNN is exact but slow — ANN trades small accuracy for huge speed gains'],
-  ['Quantization','Map continuous space to finite discrete set to reduce memory'],
-  ['Vector Quantization','Map each vector to nearest centroid from codebook'],
-  ['IVF (Inverted File Index)','Clustering-based ANN: search only most relevant clusters'],
-  ['K-Means Complexity','Cluster assignment + centroid update per iteration'],
-  ['Product Quantization (PQ)','Split vector into sub-vectors, quantize each independently'],
-  ['PQ Lookup Tables','Pre-compute distances between query sub-vectors and centroids'],
-  ['IVF + PQ Pipeline','1. Cluster → 2. Quantize → 3. Query → 4. Rank nearest'],
-  ['Training RAGs','Independent training: retriever and LM trained separately'],
-  ['RAG Benefits','Reduces hallucination, enables real-time info, handles copyright'],
-  ['Multi-Modal RAG','Retrieve images, tables, code alongside text'],
-  ['When to Use RAG','Domain-specific, real-time, citation-needed, large knowledge base']
+  {title:'LLM Problems at Inference Time', body:'Large Language Models have no explicit access to their pre-training corpus at inference time. This causes several critical issues:', points:['<strong>Hallucinations:</strong> Models generate plausible but factually wrong information with high confidence','<strong>Lack of Attribution:</strong> No source citations — impossible to verify claims or trace origins','<strong>Cost of Training:</strong> Encoding all world knowledge into model weights is extremely expensive and goes stale quickly','<strong>Copyright &amp; Privacy:</strong> Training data (e.g., Colossal Clean Crawled Corpus) may contain copyrighted/private info','<strong>Long-Tail Information:</strong> LLMs struggle with rare/specialized knowledge — log-linear relationship between model size and QA accuracy'], note:'Dodge et al. (EMNLP 2021) documented significant copyright issues in large web-crawled corpora.'},
+  {title:'Retrieval Augmented Generation (RAG)', body:'RAG addresses LLM limitations by grounding generation in retrieved evidence.', points:['<strong>GOAL:</strong> Identify a small subset of documents in the datastore similar to the query','Combine retrieved context + original query → feed to LLM for generation','The LLM generates an answer grounded in actual documents — not just memorized training data','RAG can be updated in real-time by modifying the document store (no retraining needed)','Reduces hallucination, enables attribution, handles real-time info, respects copyright']},
+  {title:'Traditional vs Vector Databases', body:'Why traditional databases fall short for semantic retrieval:', points:['<strong>Traditional:</strong> Store scalar data in rows/columns, query by exact match (SQL WHERE clauses)','<strong>Problem:</strong> "How to fix a flat tire?" won\'t match a doc titled "Tire Repair Guide" — no semantic understanding','<strong>Solution:</strong> Vector databases store dense embeddings that capture semantic meaning','<strong>Vector DBs:</strong> Store vector embeddings for fast similarity search using cosine/L2 distance','Examples: Pinecone, Weaviate, Qdrant, ChromaDB, FAISS (library)']},
+  {title:'How Vector Databases Work', body:'Vector DBs use Approximate Nearest Neighbor (ANN) algorithms to find similar vectors efficiently.', points:['Use <strong>similarity metrics</strong> (cosine similarity, L2 distance, dot product) to compare vectors','ANN algorithms trade small accuracy loss for massive speed gains','Three main acceleration techniques: <strong>hashing, quantization, graph-based search</strong>','kNN (exact) complexity: O(N·d) per query — too slow for millions of vectors','ANN reduces this to O(√N) or better with index structures']},
+  {title:'Quantization Fundamentals', body:'Quantization = mapping a continuous space to a finite discrete set.', points:['<strong>Pros:</strong> Reduce memory, reduce computation, improve cache efficiency','<strong>Cons:</strong> Introduces quantization error, precision–efficiency trade-off','<strong>Vector Quantization:</strong> Map each vector to its nearest centroid using k-means clustering','All centroids stored as a global codebook; each vector stored as just an index','Codebook size grows exponentially with vector dimensionality'], note:'K-means is the backbone of almost all approximate nearest neighbor techniques.'},
+  {title:'IVF (Inverted File Index) Method', body:'A clustering-based ANN method that searches only in the most relevant clusters:', points:['<strong>Offline:</strong> Run k-means to get m centroids, assign each vector to nearest centroid','<strong>Storage:</strong> Inverted lists — centroids + lists of vector IDs per centroid','<strong>Query time:</strong> 1) Compute distance to all m centroids, 2) Select top c clusters (nprobe), 3) Search only vectors in those clusters, 4) Return top-K','Speed gain: search only c/m fraction of vectors — e.g., 2/100 = only 2% of database','Trade-off: higher nprobe → better recall but slower search']},
+  {title:'Product Quantization (PQ)', body:'PQ compresses vectors by splitting them into sub-vectors and quantizing each independently:', points:['Split D-dimensional vector into M sub-vectors of D/M dimensions each','Each sub-space has its own codebook of K centroids (typically K=256)','<strong>Storage:</strong> M bytes per vector instead of D×4 bytes — massive compression','<strong>Distance computation:</strong> Build lookup tables from query sub-vectors to centroids','<strong>IVF + PQ pipeline:</strong> Cluster → Quantize → Query → Coarse search → PQ re-rank → Exact re-rank top R']},
+  {title:'Training RAGs', body:'How to train the retriever and generator components of a RAG system:', points:['<strong>Independent training:</strong> Retriever and LM trained separately — simplest approach','Use off-the-shelf models (no extra training), each part improved independently','Sparse retrievers: TF-IDF, BM25; Dense retrievers: DPR, Pinecone','<strong>Sequential training:</strong> Train retriever first, then fine-tune LM with retrieval','<strong>Joint training:</strong> End-to-end with asynchronous index updates (most complex)'], note:'Independent training is most common in practice — joint training is expensive and complex.'},
+  {title:'RAG Benefits &amp; Applications', body:'Why and when to use RAG:', points:['<strong>Reduces hallucination</strong> by grounding answers in retrieved evidence','<strong>Enables real-time info</strong> without retraining (just update document store)','<strong>Handles copyright/privacy</strong> by controlling what documents are in the store','<strong>Multi-Modal RAG:</strong> Retrieve images, tables, code alongside text','<strong>Use RAG when:</strong> domain-specific QA, real-time info needed, citation required, large knowledge base']}
 ]);
 
 renderSlides('slides2', [
-  ['Tool Augmentation Motivation','LLMs can\'t access real-time data, do math, or call APIs natively'],
-  ['Toolformer (Schick et al. 2023)','LLMs teach themselves to use tools — self-supervised approach'],
-  ['Toolformer Pipeline','1. Sample API calls → 2. Execute → 3. Filter useful ones → 4. Fine-tune'],
-  ['Function Calling Overview','User query → LLM identifies function + args → App executes → LLM uses result'],
-  ['FC Step 1','User: "What is my fee payment status?"'],
-  ['FC Step 2','Model outputs: tool_calls=[FunctionCall(name="payment_status", args={"id":"T1001"})]'],
-  ['FC Step 3','App executes function, returns {"status":"Paid"}'],
-  ['FC Step 4','Model generates: "Your fee payment T1001 has been paid."'],
-  ['Tool Definitions','Tools = standardized, reusable, well-documented function interfaces']
+  {title:'Tool Augmentation Motivation', body:'LLMs have fundamental limitations that tools can address:', points:['Cannot access up-to-date information on recent events','Cannot perform precise mathematical calculations','Cannot interact with external APIs, databases, or services','<strong>Toolformer</strong> (Schick et al., 2023): LLMs teach themselves to use tools via self-supervised learning'], note:'Toolformer was a landmark paper showing LLMs can autonomously learn when and how to use external tools.'},
+  {title:'Toolformer Pipeline', body:'How Toolformer autonomously learns tool use:', points:['<strong>Step 1:</strong> Sample potential API calls at various positions in training text','<strong>Step 2:</strong> Execute each sampled API call to get results','<strong>Step 3:</strong> Filter — keep only calls where language model loss decreases: L(without) - L(with) > threshold','<strong>Step 4:</strong> Fine-tune the model on text with successful API calls inserted','The model learns <em>which</em> APIs to call, <em>when</em> to call them, <em>what arguments</em> to pass, and <em>how to use</em> results']},
+  {title:'Function Calling — 4-Step Process', body:'How modern LLMs use function calling at inference time:', points:['<strong>Step 1:</strong> User enters query: "What is the status of my fee payment?"','<strong>Step 2:</strong> Model identifies function + arguments: tool_calls=[FunctionCall(name="payment_status", args={"transaction_id":"T1001"})]','<strong>Step 3:</strong> Application executes the function, returns result: {"status":"Paid"}','<strong>Step 4:</strong> Model incorporates result into natural language response: "Your fee payment T1001 has been paid."']},
+  {title:'Tool Types in Development', body:'Tools extend LLM capabilities by accessing external resources:', points:['<strong>Data tools:</strong> Retrieve necessary information (query databases, search web, read files)','<strong>Action tools:</strong> Perform operations (update records, send messages, trigger workflows)','<strong>Orchestration tools:</strong> Coordinate or delegate tasks to other agents/LLMs','Tools should have <strong>standardized, reusable, well-documented definitions</strong> to enable flexibility and prevent redundancy']}
+]);
+
+renderDiagrams('diagrams', [
+  {
+    title: 'RAG Pipeline — End to End',
+    type: 'flow',
+    steps: ['User Query', 'Embed Query', 'Vector DB Search', 'Top-K Documents', 'Augment Prompt', 'LLM Generate', 'Response'],
+    caption: 'The complete RAG flow: query is embedded, similar documents retrieved from vector DB, concatenated with query as context, then LLM generates a grounded response.'
+  },
+  {
+    title: 'IVF + PQ Search Pipeline',
+    type: 'flow',
+    steps: ['Query Embedding', 'Coarse Search (IVF centroids)', 'Select Top-c Clusters', 'PQ Lookup Tables', 'Approximate Ranking', 'Exact Re-rank Top-R', 'Return Top-K'],
+    caption: 'Two-stage retrieval: IVF narrows candidates by cluster, PQ provides fast approximate distance, then exact re-ranking on the short list.'
+  },
+  {
+    title: 'Function Calling Flow',
+    type: 'flow',
+    steps: ['User Query + Tool Defs', 'LLM Identifies Function', 'App Executes Function', 'Results → LLM', 'Natural Language Response'],
+    caption: 'The LLM never executes functions itself — the application mediates execution and feeds results back.'
+  },
+  {
+    title: 'Vector Database vs Traditional Database',
+    type: 'compare',
+    left: {heading:'Traditional DB (SQL)', points:['Scalar data in rows/columns','Exact match queries (WHERE x=y)','No semantic understanding','Fast for structured lookups','Cannot handle "similar meaning"']},
+    right: {heading:'Vector Database', points:['Dense embeddings (768+ dims)','Similarity search (cosine, L2)','Captures semantic meaning','Optimized for ANN search','Handles "what is similar to X?"']}
+  }
 ]);
 
 renderMath('math', [
-  {name:'Cosine Similarity', formula:'cos(q, d) = (q · d) / (||q|| · ||d||)', desc:'Measures angle between query and document embeddings — used for retrieval'},
-  {name:'L2 / Euclidean Distance', formula:'d(a,b) = √(Σ (aᵢ - bᵢ)²)', desc:'Straight-line distance in embedding space — smaller = more similar'},
-  {name:'K-Means Objective', formula:'J = Σₖ Σᵢ∈Cₖ ||xᵢ - μₖ||²', desc:'Minimize sum of squared distances from points to their cluster centroid μₖ'},
-  {name:'Product Quantization', formula:'d(q,x) ≈ Σₘ d(qₘ, cₘ(xₘ))', desc:'Approximate full distance as sum of sub-vector distances via lookup table'},
-  {name:'Toolformer Loss Filter', formula:'Keep API call if L(without_call) - L(with_call) > threshold', desc:'Only retain tool calls that reduce language model loss'}
+  {name:'Cosine Similarity', formula:'cos(q, d) = (q · d) / (||q|| · ||d||)', desc:'Measures angle between query and document embeddings — used for retrieval. Range: [-1, 1], where 1 = identical direction.'},
+  {name:'L2 / Euclidean Distance', formula:'d(a,b) = √(Σ (aᵢ - bᵢ)²)', desc:'Straight-line distance in embedding space — smaller = more similar. Unlike cosine, sensitive to vector magnitude.'},
+  {name:'Dot Product Similarity', formula:'sim(q, d) = q · d = Σ qᵢ · dᵢ', desc:'Unnormalized similarity — faster than cosine but conflates magnitude with direction.'},
+  {name:'K-Means Objective', formula:'J = Σₖ Σᵢ∈Cₖ ||xᵢ - μₖ||²', desc:'Minimize sum of squared distances from each point to its assigned cluster centroid μₖ.'},
+  {name:'kNN Complexity', formula:'O(N · d) per query', desc:'N = number of vectors, d = embedding dimension. For 1M vectors at d=768: 768M multiplications per query.'},
+  {name:'Product Quantization Distance', formula:'d(q,x) ≈ Σₘ d(qₘ, cₘ(xₘ))', desc:'Approximate full distance as sum of sub-vector distances via pre-computed lookup table.'},
+  {name:'Toolformer Loss Filter', formula:'Keep API call if L(without_call) - L(with_call) > threshold', desc:'Only retain tool calls that reduce language model loss — self-supervised quality control.'}
 ]);
 
 renderDryRun('dryrun', [
@@ -74,8 +87,8 @@ renderDryRun('dryrun', [
     title: 'Cosine Similarity: query=[1,2,3], doc=[2,4,6]',
     steps: [
       'Dot product: 1×2 + 2×4 + 3×6 = 2 + 8 + 18 = 28',
-      '||query|| = √(1+4+9) = √14 ≈ 3.742',
-      '||doc|| = √(4+16+36) = √56 ≈ 7.483',
+      '||query|| = √(1²+2²+3²) = √14 ≈ 3.742',
+      '||doc|| = √(2²+4²+6²) = √56 ≈ 7.483',
       'cos = 28 / (3.742 × 7.483) = 28 / 28.0 = 1.0'
     ],
     result: 'cos = 1.0 — vectors point in exact same direction (doc is 2× query). Perfect similarity!'
@@ -89,37 +102,54 @@ renderDryRun('dryrun', [
       'Search only ~200 vectors in those 2 clusters instead of all 1000',
       'Return top-k nearest from those 200'
     ],
-    result: 'Speed: search 200/1000 = 80% reduction. Accuracy: may miss items in other clusters.'
+    result: 'Speed: search 200/1000 = 80% reduction. Accuracy: may miss items in other clusters (recall < 100%).'
   },
   {
-    title: 'Product Quantization: 128-dim vector, M=4 sub-vectors',
+    title: 'Product Quantization Compression: 128-dim vector, M=4 sub-vectors',
     steps: [
       'Split 128-dim into 4 sub-vectors of 32 dims each',
       'Each sub-space has 256 centroids (1 byte per sub-vector)',
-      'Original: 128 × 4 bytes = 512 bytes per vector',
+      'Original storage: 128 × 4 bytes = 512 bytes per vector',
       'PQ compressed: 4 × 1 byte = 4 bytes per vector',
-      'Compression ratio: 512/4 = 128×'
+      'Compression ratio: 512 / 4 = 128×',
+      'For 1M vectors: 512MB → 4MB!'
     ],
-    result: '128× memory reduction with lookup-table based distance computation'
+    result: '128× memory reduction. Distance computed via lookup table: 4 table lookups + 3 additions instead of 128 multiplications + 127 additions.'
+  },
+  {
+    title: 'Full RAG Pipeline: "When was NUST founded?"',
+    steps: [
+      'User query → Embed with same model used for documents (e.g., SBERT)',
+      'Query vector → Search vector DB (FAISS IVF+PQ index of university docs)',
+      'Top-3 retrieved: [1] "NUST was established in 1991…" [2] "National University of Sciences…" [3] "NUST campuses include…"',
+      'Augmented prompt: "[Context: NUST was established in 1991…] Answer: When was NUST founded?"',
+      'LLM generates: "NUST (National University of Sciences and Technology) was founded in 1991."'
+    ],
+    result: 'RAG grounded the answer in a real document. Without RAG, the LLM might hallucinate the wrong year.'
   }
 ]);
 
 renderExercises('exercises', [
-  {q:'What problem does RAG primarily solve?', options:['Speed up training','Reduce hallucinations via external knowledge','Make models smaller','Improve tokenization'], correct:1, explanation:'RAG grounds LLM responses in retrieved documents.'},
+  {q:'What problem does RAG primarily solve?', options:['Speed up training','Reduce hallucinations via external knowledge','Make models smaller','Improve tokenization'], correct:1, explanation:'RAG grounds LLM responses in retrieved documents, reducing factual errors.'},
   {q:'In IVF search, what does increasing nprobe do?', options:['Reduces accuracy','Checks more clusters — more accurate but slower','Reduces memory','Changes embedding size'], correct:1, explanation:'Higher nprobe = more clusters searched = better recall but slower.'},
-  {q:'Calculate cosine similarity of [1,0] and [0,1]', answer:'Dot product = 0. ||[1,0]|| = 1, ||[0,1]|| = 1. cos = 0/1 = 0. Orthogonal vectors — no similarity.'},
-  {q:'Product Quantization splits a D-dimensional vector into M sub-vectors. If D=256, M=8, how many dims per sub-vector?', options:['8','32','64','256'], correct:1, explanation:'256/8 = 32 dimensions per sub-vector'},
-  {q:'In Toolformer, how does the model decide which tool calls to keep?', answer:'It compares language model loss with and without the tool call. If loss decreases by more than a threshold, the call is kept — meaning the tool actually helped generate better text.'}
+  {q:'Calculate cosine similarity of [1,0] and [0,1]', answer:'Dot product = 1×0 + 0×1 = 0. ||[1,0]|| = 1, ||[0,1]|| = 1. cos = 0/(1×1) = 0. Orthogonal vectors — completely unrelated.'},
+  {q:'If D=256, M=8, how many dims per PQ sub-vector?', options:['8','32','64','256'], correct:1, explanation:'256/8 = 32 dimensions per sub-vector.'},
+  {q:'In Toolformer, how does the model decide which tool calls to keep?', answer:'It compares language model loss with and without the tool call. If loss decreases by more than a threshold, the call is kept — the tool genuinely helped.'},
+  {q:'Which is NOT a benefit of RAG?', options:['Reduces hallucination','Enables real-time info','Makes model training faster','Allows attribution to sources'], correct:2, explanation:'RAG does not speed up training — it adds retrieval overhead at inference time. Its benefits are in output quality and groundedness.'},
+  {q:'Name the 3 types of tools in LLM development', answer:'1) Data tools: retrieve information (search, database queries). 2) Action tools: perform operations (update records, send messages). 3) Orchestration tools: coordinate tasks between agents/LLMs.'}
 ]);
 
 renderChecklist('checklist', [
   'Explain 5 problems RAG solves (hallucination, attribution, cost, copyright, long-tail)',
-  'Know cosine similarity vs L2 distance for retrieval',
-  'Understand IVF: clustering → probing → search',
-  'Explain Product Quantization: split, quantize, lookup table',
-  'Describe the full RAG pipeline: embed → store → query → retrieve → generate',
-  'Understand Toolformer self-supervised approach',
-  'Know the 4 steps of Function Calling'
+  'Draw the full RAG pipeline: embed → store → query → retrieve → augment → generate',
+  'Know cosine similarity vs L2 distance vs dot product for retrieval',
+  'Understand IVF: clustering → probing → search — and the nprobe trade-off',
+  'Explain Product Quantization: split, quantize, lookup table, compression ratio',
+  'Describe the IVF+PQ combined pipeline with coarse and fine stages',
+  'Understand the 3 RAG training strategies: independent, sequential, joint',
+  'Explain Toolformer self-supervised approach and its loss-based filtering',
+  'Know the 4 steps of Function Calling (query → identify → execute → respond)',
+  'Distinguish Data, Action, and Orchestration tools'
 ], 'w3');
 </script>
 </body></html>

@@ -14,105 +14,296 @@
 <div class="lecture-page">
 <div class="breadcrumb"><a href="index.html">Home</a> / Week 9</div>
 <h1>Lecture 09 — RNN &amp; LSTM</h1>
-<div class="meta">40 slides · Recurrent architectures, gates, backprop through time</div>
+<div class="meta">40 slides · Recurrent architectures, gates, BPTT, vanishing gradients, LSTM cell state, GRU</div>
 
 <div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Architecture &amp; Flow Diagrams</h2><div id="diagrams"></div></div>
 <div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
-<div class="lec-section"><h2>Dry Run — LSTM Forward Pass</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Dry Runs — RNN &amp; LSTM Forward Pass</h2><div id="dryrun"></div></div>
 <div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
 <div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
 </div>
 <script src="js/lecture.js"></script>
 <script>
 renderSlides('slides', [
-  {title:'From Word Embeddings to Sequence Models', body:'Word2Vec gives us dense vector representations. But how do we process <em>sequences</em> of words where order matters?', points:['Word2Vec: input one-hot → embedding lookup → dense vector','But language is sequential: "dog bites man" ≠ "man bites dog"','We need a model that can process sequences of arbitrary length','The hidden state must carry information from previous timesteps'], note:'This is the fundamental motivation for Recurrent Neural Networks.'},
-  {title:'Simple Recurrent Network (SRN)', body:'Developed by Jeff Elman (1990). The key idea: the hidden layer receives <strong>two</strong> inputs at each timestep.', points:['Input 1: current word embedding xₜ','Input 2: previous hidden state hₜ₋₁ (the "memory")','The same weights W are shared across all timesteps (parameter sharing)','This allows processing sequences of any length with a fixed number of parameters'], note:'The hidden state hₜ is a compressed summary of ALL inputs seen so far: x₁, x₂, …, xₜ.'},
-  {title:'RNN Computational Graph (Unrolled)', body:'When we "unroll" an RNN over time, we get a deep network where each layer corresponds to one timestep.', points:['h₁ = f(Wₓx₁ + Wₕh₀ + b) — processes first word','h₂ = f(Wₓx₂ + Wₕh₁ + b) — processes second word using h₁','h₃ = f(Wₓx₃ + Wₕh₂ + b) — processes third word using h₂','<strong>Same Wₓ, Wₕ, b at every step</strong> — weight sharing!','The unrolled graph shows why gradients must flow through many layers'], note:'This is NOT separate copies of the network — it is the SAME network applied repeatedly.'},
-  {title:'RNN State Update & Output Equations', body:'The core computation at each timestep:', points:['<strong>State update:</strong> hₜ = tanh(Wₕ · hₜ₋₁ + Wₓ · xₜ + b)','<strong>Output:</strong> yₜ = softmax(Wᵧ · hₜ)','tanh squashes values to [-1, 1] — prevents unbounded growth','Wₕ (hidden→hidden) captures temporal patterns','Wₓ (input→hidden) captures input features','Wᵧ (hidden→output) maps to predictions'], note:'For language modeling, yₜ predicts the next word given all previous words.'},
-  {title:'Sequence Modeling Architectures', body:'RNNs can be configured for different input-output relationships:', points:['<strong>Many-to-one:</strong> sequence → single output (sentiment classification)','<strong>One-to-many:</strong> single input → sequence (image captioning)','<strong>Many-to-many (aligned):</strong> sequence → sequence of same length (POS tagging)','<strong>Many-to-many (unaligned):</strong> sequence → different length sequence (translation) — needs encoder-decoder']},
-  {title:'Backpropagation Through Time (BPTT)', body:'Training an RNN requires computing gradients through the unrolled graph — this is BPTT.', points:['Unroll the RNN for T timesteps','Compute loss at each step: L = Σₜ Lₜ','Apply chain rule backwards through all timesteps','∂L/∂W = Σₜ ∂Lₜ/∂W — sum of gradients from each step','Each ∂Lₜ/∂W involves multiplying through t Jacobian matrices'], note:'The chain rule requires multiplying many matrices together — this is where problems arise.'},
-  {title:'Standard RNN Gradient Flow — The Problem', body:'The gradient of the loss with respect to early hidden states involves a product of many terms:', points:['∂hₜ/∂h₁ = Πₖ₌₁ᵗ⁻¹ diag(tanh\'(hₖ)) · Wₕ','tanh\'(x) has maximum value of 1 (at x=0), typically < 1','If ‖Wₕ‖ < 1: product shrinks exponentially → <strong>vanishing gradients</strong>','If ‖Wₕ‖ > 1: product grows exponentially → <strong>exploding gradients</strong>','Exploding can be fixed with gradient clipping; vanishing cannot'], note:'Vanishing gradients mean the network CANNOT learn to connect early inputs to late outputs.'},
-  {title:'Long Distance Dependencies', body:'In natural language, critical dependencies can span dozens of words:', points:['<em>"The students who studied hard for the exam … <strong>were</strong> rewarded"</em>','The verb "were" must agree with "students" (plural) — not "exam" (singular)','Intervening words create a long gap between subject and verb','RNNs fail here because gradients from "were" cannot reach "students"','This is not a hypothetical problem — it causes real failures in language modeling'], note:'This limitation motivated the development of LSTM networks.'},
-  {title:'Long Short-Term Memory (LSTM) — Introduction', body:'LSTM (Hochreiter & Schmidhuber, 1997) adds gating mechanisms to each memory cell:', points:['<strong>Cell state Cₜ</strong> — the long-term memory "conveyor belt"','<strong>Forget gate fₜ</strong> — decides what to erase from cell state','<strong>Input/Store gate iₜ</strong> — decides what new info to add','<strong>Output gate oₜ</strong> — decides what to expose as hidden state','Gates use sigmoid σ(x) ∈ (0,1) — continuous "soft" switches'], note:'The key innovation is the CELL STATE — information flows through it with minimal modification unless a gate specifically acts on it.'},
-  {title:'Standard RNN vs LSTM Cell Comparison', body:'Side-by-side comparison of the internal structure:', points:['<strong>RNN:</strong> single tanh layer: hₜ = tanh(W·[hₜ₋₁, xₜ] + b)','<strong>LSTM:</strong> 4 interacting layers (forget, input, candidate, output)','RNN has 1 weight matrix; LSTM has 4 weight matrices','RNN: hidden state is the ONLY information carrier','LSTM: hidden state hₜ AND cell state Cₜ — two separate vectors','LSTM cell state enables information to persist unchanged for many steps']},
-  {title:'Forget Gate — Detailed', body:'The forget gate decides which dimensions of the cell state to ERASE (set close to 0).', points:['<strong>Equation:</strong> fₜ = σ(Wf · [hₜ₋₁, xₜ] + bf)','Input: concatenation of previous hidden state and current input','Output: vector of values in (0,1), same dimension as cell state','fₜ = 0 → completely forget that dimension','fₜ = 1 → completely remember that dimension','Applied element-wise: Cₜ₋₁ ⊙ fₜ — some dimensions survive, others are erased'], note:'Example: when encountering a new subject ("They"), the forget gate erases the stored info about the previous subject ("she").'},
-  {title:'Input/Store Gate — Detailed', body:'The input gate decides what NEW information to store in the cell state. It has two parts:', points:['<strong>Gate:</strong> iₜ = σ(Wᵢ · [hₜ₋₁, xₜ] + bᵢ) — which dims to update (0-1)','<strong>Candidate:</strong> C̃ₜ = tanh(Wc · [hₜ₋₁, xₜ] + bc) — what values to add (-1 to 1)','The candidate proposes new values; the gate controls which ones actually get written','Element-wise product: iₜ ⊙ C̃ₜ — filtered new information','If iₜ = 0 for some dimension → no new info written there'], note:'Think of it as: the candidate is the "proposal" and the input gate is the "filter".'},
-  {title:'Cell State Update — The Core Innovation', body:'This is the most important equation in the LSTM — the reason it works:', points:['<strong>Cₜ = fₜ ⊙ Cₜ₋₁ + iₜ ⊙ C̃ₜ</strong>','Step 1: Forget — fₜ ⊙ Cₜ₋₁ erases selected old information','Step 2: Input — iₜ ⊙ C̃ₜ adds selected new information','This is an <strong>ADDITIVE</strong> update, not multiplicative!','The + means information can flow unchanged if fₜ≈1 and iₜ≈0','This is why LSTM solves vanishing gradients — the gradient through + is just 1'], note:'Compare to RNN where hₜ = tanh(W·hₜ₋₁ + ...) — MULTIPLICATIVE transformation that destroys information.'},
-  {title:'Cell State Example — Subject-Verb Agreement', body:'Concrete example of how the cell state tracks grammatical information:', points:['Suppose dimension 0 of Cₜ tracks subject gender, dimension 1 tracks number','Input "She" → cell stores [+female, +singular] via input gate','20 words later, verb must agree: "She ... <strong>was</strong>" (singular)','If forget gate keeps fₜ≈1 for those dims → info persists for 20+ steps','When a new subject appears ("They"), forget gate sets fₜ≈0 → old subject erased','Input gate then writes [+neutral, +plural]']},
-  {title:'Output Gate — Detailed', body:'The output gate controls what the cell state reveals to the outside world:', points:['<strong>Gate:</strong> oₜ = σ(Wₒ · [hₜ₋₁, xₜ] + bₒ)','<strong>Hidden state:</strong> hₜ = oₜ ⊙ tanh(Cₜ)','Cell state is squashed through tanh to [-1, 1] range','Output gate selectively filters which dims become visible','hₜ is used for: (1) predictions yₜ, and (2) input to next timestep','Cell state information that is not yet relevant can stay hidden'], note:'The cell can store information that is invisible to the output — waiting for the right moment to expose it.'},
-  {title:'LSTM Gradient Flow — Why It Works', body:'The gradient through the cell state update is remarkably simple:', points:['∂Cₜ/∂Cₜ₋₁ = fₜ (the forget gate value!)','Over many steps: ∂Cₜ/∂C₁ = Πₖ₌₂ᵗ fₖ','If forget gates ≈ 1 (network chooses to remember): gradient ≈ 1','No repeated multiplication by Wₕ or tanh\' — just by fₜ ∈ (0,1)','The network LEARNS when to forget (fₜ→0) and when to remember (fₜ→1)','This is called the "gradient highway" through the cell state'], note:'This is the fundamental reason LSTM works — the additive update creates a direct gradient path.'},
-  {title:'LSTM Training Details', body:'How to actually train an LSTM network:', points:['<strong>Optimizer:</strong> Adam (Kingma & Ba, 2015) is the standard choice','<strong>Parameters per cell:</strong> 4 weight matrices (Wf, Wᵢ, Wc, Wₒ) each of size [d+n, d]','<strong>Bias initialization:</strong> forget gate bias often initialized to 1 (remember by default)','<strong>Data requirements:</strong> generally needs lots of training data','<strong>Compute:</strong> exploits GPU parallelism within each timestep','<strong>Stacking:</strong> multiple LSTM layers can be stacked (deep LSTM)']},
-  {title:'Applications of LSTMs', body:'LSTMs are used across many sequence tasks:', points:['<strong>Sequence labeling:</strong> output at each timestep → POS tagging, NER','<strong>Language modeling:</strong> predict next word (Oₜ = xₜ₊₁)','<strong>Sequence classification:</strong> use final hidden state hₙ → sentiment','<strong>Machine translation:</strong> encoder-decoder (next lecture!)','<strong>Speech recognition:</strong> audio frames → text','<strong>Time series:</strong> stock prediction, weather forecasting'], note:'LSTMs dominated NLP from 2013-2017, before Transformers took over. Understanding LSTMs is essential to understanding why Transformers were revolutionary.'}
+  {title:'From Word Embeddings to Sequence Models', body:'Word2Vec gives dense vector representations, but treats each word independently. Language is sequential — we need models that process ordered sequences.', points:['Word2Vec: word → fixed embedding. No notion of context beyond training distribution.','Language has ORDER: "dog bites man" ≠ "man bites dog" — same bag-of-words, different meanings','Need a model that: (1) processes sequences of arbitrary length, (2) maintains memory of past inputs','<strong>Feedforward limitation:</strong> Fixed input size, no memory between inputs','<strong>Solution:</strong> Recurrent Neural Networks — process one token at a time, maintaining a hidden state','The hidden state hₜ is a compressed summary of ALL inputs x₁, x₂, …, xₜ seen so far'], note:'RNNs were the dominant architecture for sequence modeling in NLP from ~2013-2017, before Transformers.'},
+  {title:'Simple Recurrent Network (SRN / Elman Network)', body:'Developed by Jeff Elman (1990). The key innovation: the hidden layer receives TWO inputs at each timestep.', points:['<strong>Input 1:</strong> Current word embedding xₜ (from embedding layer)','<strong>Input 2:</strong> Previous hidden state hₜ₋₁ (the "memory" from last step)','Combined: zₜ = Wₓ · xₜ + Wₕ · hₜ₋₁ + b','Non-linearity: hₜ = tanh(zₜ) — squashes to [-1, 1]','<strong>Weight sharing:</strong> The SAME Wₓ, Wₕ, b are used at EVERY timestep','This allows processing any length sequence with a fixed number of parameters','h₀ is typically initialized to zeros (or learned)'], note:'Weight sharing is critical — without it, we would need different parameters for each position, and couldn\'t handle variable-length inputs.'},
+  {title:'RNN Computational Graph — Unrolled View', body:'When we "unroll" an RNN over time, each timestep becomes a layer in a deep network:', points:['<strong>Step 1:</strong> h₁ = tanh(Wₓ·x₁ + Wₕ·h₀ + b) — processes first word','<strong>Step 2:</strong> h₂ = tanh(Wₓ·x₂ + Wₕ·h₁ + b) — processes second word using h₁','<strong>Step 3:</strong> h₃ = tanh(Wₓ·x₃ + Wₕ·h₂ + b) — h₂ carries info from x₁ AND x₂!','Same Wₓ, Wₕ, b used at every layer — this IS the weight sharing','Output at each step: yₜ = softmax(Wᵧ · hₜ)','For a 100-word sentence: 100 layers deep! → This is why gradient flow is a problem.','<strong>Key insight:</strong> This is NOT 100 separate networks — it is ONE network applied 100 times.']},
+  {title:'RNN Equations — Complete', body:'The full set of equations defining an RNN at each timestep:', points:['<strong>Pre-activation:</strong> zₜ = Wₓ · xₜ + Wₕ · hₜ₋₁ + b','<strong>Hidden state:</strong> hₜ = tanh(zₜ) — non-linear transformation, output ∈ [-1, 1]','<strong>Output scores:</strong> oₜ = Wᵧ · hₜ + bᵧ','<strong>Prediction:</strong> ŷₜ = softmax(oₜ) — probability distribution over vocabulary','<strong>Loss:</strong> Lₜ = −log(ŷₜ[target]) — cross-entropy at step t','<strong>Total loss:</strong> L = (1/T) Σₜ₌₁ᵀ Lₜ — average over all timesteps','<strong>Dimensions:</strong> xₜ ∈ ℝⁿ, hₜ ∈ ℝᵈ, Wₓ ∈ ℝᵈˣⁿ, Wₕ ∈ ℝᵈˣᵈ, Wᵧ ∈ ℝᵛˣᵈ']},
+  {title:'Sequence Modeling Architectures', body:'RNNs can be configured for different input-output relationships:', points:['<strong>Many-to-one:</strong> Sequence → single output. Use hₜ (final hidden state). Example: sentiment classification.','<strong>One-to-many:</strong> Single input → generate sequence. Example: image captioning. Single image → word₁, word₂, ...','<strong>Many-to-many (aligned):</strong> Sequence → sequence of same length. Output at each step. Example: POS tagging.','<strong>Many-to-many (encoder-decoder):</strong> Sequence → different length sequence. Example: machine translation.','<strong>Bidirectional RNN:</strong> Process sequence left-to-right AND right-to-left → concatenate hidden states at each position','<strong>Deep/Stacked RNN:</strong> Multiple RNN layers: hidden state of layer L becomes input to layer L+1']},
+  {title:'Backpropagation Through Time (BPTT)', body:'Training an RNN requires computing gradients through the entire unrolled computational graph.', points:['<strong>Step 1:</strong> Unroll the RNN for T timesteps (one layer per timestep)','<strong>Step 2:</strong> Forward pass: compute h₁, h₂, ..., hₜ and losses L₁, L₂, ..., Lₜ','<strong>Step 3:</strong> Backward pass: total loss L = Σ Lₜ, compute ∂L/∂W using chain rule','<strong>Key:</strong> ∂L/∂W = Σₜ ∂Lₜ/∂W — gradient accumulates from ALL timesteps','Each ∂Lₜ/∂W requires propagating through layers t, t-1, t-2, ..., 1','<strong>Truncated BPTT:</strong> Only backprop for k steps instead of full T — practical approximation','Problem: for long sequences, gradients must flow through many matrix multiplications']},
+  {title:'The Vanishing Gradient Problem — In Detail', body:'The fundamental failure mode of vanilla RNNs on long sequences:', points:['Gradient of loss at time t with respect to hidden state at time k (k << t):','∂hₜ/∂hₖ = Πⱼ₌ₖ₊₁ᵗ (diag(tanh\'(zⱼ)) × Wₕ)','<strong>tanh\'(x):</strong> Maximum value is 1.0 (at x=0), typically 0.1-0.5 for trained networks','<strong>‖Wₕ‖:</strong> If spectral norm < 1: each multiplication shrinks the gradient','Combined: gradient shrinks by factor ~0.25 per timestep','After 30 steps: 0.25³⁰ ≈ 10⁻¹⁸ — essentially zero!','The network CANNOT learn relationships between inputs more than ~10-20 steps apart'], note:'The vanishing gradient is an inherent mathematical property of the RNN architecture, not a bug in training.'},
+  {title:'Exploding Gradients — The Other Problem', body:'If ‖Wₕ‖ > 1, gradients grow exponentially instead of shrinking:', points:['∂hₜ/∂hₖ = Πⱼ (tanh\'(zⱼ) × Wₕ) — if ‖Wₕ‖ = 1.5, after 30 steps: 1.5³⁰ ≈ 191,751','Gradients become huge → weights update too much → training diverges (NaN losses)','<strong>Solution: Gradient Clipping</strong> — if ‖∇‖ > threshold, scale it down:','  ∇ ← ∇ × (threshold / ‖∇‖)','This is simple and effective — used in all RNN/LSTM training','Note: clipping does NOT fix vanishing gradients — that requires architectural changes']},
+  {title:'Long Distance Dependencies in Language', body:'Why vanishing gradients are not just a theoretical concern — real language has long-range structure:', points:['<em>"The <strong>students</strong> who sat at the back of the large lecture hall on the third floor … <strong>were</strong> exceptionally bright."</em>','The verb "were" (plural) must agree with "students" — separated by 15+ words!','<em>"The <strong>cat</strong>, which had been sleeping on the warm windowsill all afternoon, suddenly <strong>jumped</strong> off."</em>','Subject "cat" (singular) determines verb form — intervening clause is a distraction','<em>"Jane called her mother, who lives in London, and told <strong>her</strong> about the news."</em>','Pronoun "her" could refer to "mother" — long-range coreference','RNNs fail because the gradient from the dependent word cannot reach the antecedent'], note:'These long-range dependencies are extremely common in natural language. A model that cannot handle them will make frequent grammatical and semantic errors.'},
+  {title:'LSTM — The Solution (Hochreiter &amp; Schmidhuber, 1997)', body:'Long Short-Term Memory adds GATING mechanisms to control information flow. The key innovation: a separate cell state that acts as a "memory highway".', points:['<strong>Cell state Cₜ ∈ ℝᵈ:</strong> The long-term memory — information flows through with minimal modification','<strong>Hidden state hₜ ∈ ℝᵈ:</strong> The short-term output — what the cell reveals to the world','<strong>4 Gates:</strong> forget (fₜ), input (iₜ), candidate (C̃ₜ), output (oₜ)','All gates use sigmoid σ ∈ (0,1) — continuous "soft" switches (differentiable!)','The cell state update is ADDITIVE: Cₜ = fₜ⊙Cₜ₋₁ + iₜ⊙C̃ₜ','This additive path is the key to solving vanishing gradients']},
+  {title:'Forget Gate — What to Erase', body:'The forget gate examines the previous output and current input, then decides which dimensions of the cell state to erase.', points:['<strong>Equation:</strong> fₜ = σ(Wf · [hₜ₋₁, xₜ] + bf)','[hₜ₋₁, xₜ] = concatenation of previous hidden state and current input','Wf ∈ ℝᵈˣ⁽ᵈ⁺ⁿ⁾ — weight matrix specific to the forget gate','Output: fₜ ∈ (0,1)ᵈ — one value per cell dimension','fₜ[i] ≈ 0 → erase dimension i of old cell state','fₜ[i] ≈ 1 → keep dimension i of old cell state','Applied: Cₜ₋₁ ⊙ fₜ — element-wise multiplication filters the old memory'], note:'Example: Reading "They" after "She was happy" → forget gate erases stored "she/singular" info to make room for "they/plural".'},
+  {title:'Input Gate + Candidate — What to Store', body:'Two components work together: the gate decides WHERE to write, the candidate decides WHAT to write.', points:['<strong>Input gate:</strong> iₜ = σ(Wᵢ · [hₜ₋₁, xₜ] + bᵢ) ∈ (0,1)ᵈ — which dims to update','<strong>Candidate values:</strong> C̃ₜ = tanh(Wc · [hₜ₋₁, xₜ] + bc) ∈ (-1,1)ᵈ — proposed new values','The candidate generates proposals; the input gate filters which ones are written','<strong>Combined:</strong> iₜ ⊙ C̃ₜ — only the "approved" new values enter the cell state','If iₜ[i] ≈ 0 → dimension i is NOT updated (old value preserved)','If iₜ[i] ≈ 1 → dimension i gets the new value C̃ₜ[i]'], note:'Think of the candidate as writing on a chalkboard, and the input gate as a stencil that blocks certain areas.'},
+  {title:'Cell State Update — THE Core Equation', body:'This single equation is why LSTMs work:', points:['<strong>Cₜ = fₜ ⊙ Cₜ₋₁ + iₜ ⊙ C̃ₜ</strong>','<strong>Part 1 (forget):</strong> fₜ ⊙ Cₜ₋₁ — selectively erase old information','<strong>Part 2 (input):</strong> iₜ ⊙ C̃ₜ — selectively add new information','The "+" is an ADDITION — not multiplication!','If fₜ ≈ 1 and iₜ ≈ 0: Cₜ ≈ Cₜ₋₁ — cell passes information UNCHANGED','This means information can persist over 100+ timesteps without degradation','<strong>Compare to RNN:</strong> hₜ = tanh(W·hₜ₋₁ + ...) — multiplicative squashing destroys info'], note:'This is the most important equation in the entire LSTM. The additive update creates a "gradient highway" through time.'},
+  {title:'Output Gate — What to Reveal', body:'The cell state stores lots of information, but not all of it is relevant at the current timestep.', points:['<strong>Gate:</strong> oₜ = σ(Wₒ · [hₜ₋₁, xₜ] + bₒ) ∈ (0,1)ᵈ','<strong>Hidden state:</strong> hₜ = oₜ ⊙ tanh(Cₜ)','Cell state is first squashed through tanh to [-1, 1] range','Output gate then selectively reveals certain dimensions','hₜ is used for: (a) output prediction ŷₜ = softmax(Wᵧ·hₜ), (b) input to next timestep','Unrevealed information stays in the cell — "waiting" for the right moment','<strong>Example:</strong> Cell stores "subject is plural" but output gate hides it until the verb position']},
+  {title:'LSTM Gradient Flow — Why Vanishing is Solved', body:'Following the gradient through the cell state update:', points:['<strong>RNN gradient:</strong> ∂hₜ/∂hₖ = Πⱼ (diag(tanh\'(zⱼ)) × Wₕ) — many matrices multiplied → vanishes','<strong>LSTM cell gradient:</strong> ∂Cₜ/∂Cₜ₋₁ = fₜ — just the forget gate value!','Over many steps: ∂Cₜ/∂Cₖ = Πⱼ₌ₖ₊₁ᵗ fⱼ','If forget gates ≈ 1 (network learns to remember): gradient ≈ 1','No multiplication by weight matrix Wₕ! No multiplication by tanh\'!','The gradient through the cell state is a product of LEARNED gate values, not fixed weights','The network itself decides whether to let gradients flow (remember) or block them (forget)'], note:'This "gradient highway" through the cell state is the fundamental innovation of LSTM. It\'s analogous to residual connections in ResNets.'},
+  {title:'Complete LSTM Summary — All 6 Equations', body:'The full LSTM computation at each timestep t:', points:['<strong>1. Forget gate:</strong> fₜ = σ(Wf · [hₜ₋₁, xₜ] + bf)','<strong>2. Input gate:</strong> iₜ = σ(Wᵢ · [hₜ₋₁, xₜ] + bᵢ)','<strong>3. Candidate:</strong> C̃ₜ = tanh(Wc · [hₜ₋₁, xₜ] + bc)','<strong>4. Cell update:</strong> Cₜ = fₜ ⊙ Cₜ₋₁ + iₜ ⊙ C̃ₜ','<strong>5. Output gate:</strong> oₜ = σ(Wₒ · [hₜ₋₁, xₜ] + bₒ)','<strong>6. Hidden state:</strong> hₜ = oₜ ⊙ tanh(Cₜ)','<strong>Inputs:</strong> hₜ₋₁, Cₜ₋₁, xₜ  →  <strong>Outputs:</strong> hₜ, Cₜ','Parameters: 4 weight matrices (Wf, Wᵢ, Wc, Wₒ) + 4 bias vectors']},
+  {title:'LSTM Training Practical Details', body:'How to train LSTM networks effectively:', points:['<strong>Optimizer:</strong> Adam (adaptive learning rate) is the standard choice','<strong>Forget bias initialization:</strong> bf often initialized to 1.0 (start by remembering, learn to forget)','<strong>Gradient clipping:</strong> Still used even with LSTM — clip to ‖∇‖ ≤ 5 or 10','<strong>Learning rate:</strong> Typically 0.001 (Adam default). Decay on plateu.','<strong>Dropout:</strong> Applied to inputs and outputs but NOT to recurrent connections','<strong>Layer stacking:</strong> 2-4 LSTM layers stacked (output of layer L = input to layer L+1)','<strong>Bidirectional:</strong> Forward + backward LSTM → concatenate → 2d-dimensional hidden states']},
+  {title:'GRU — Gated Recurrent Unit (Cho et al., 2014)', body:'A simplified alternative to LSTM with fewer gates and no separate cell state:', points:['<strong>Reset gate:</strong> rₜ = σ(Wr · [hₜ₋₁, xₜ]) — controls how much past to forget','<strong>Update gate:</strong> zₜ = σ(Wz · [hₜ₋₁, xₜ]) — controls how much to update vs keep','<strong>Candidate:</strong> h̃ₜ = tanh(W · [rₜ ⊙ hₜ₋₁, xₜ])','<strong>Hidden state:</strong> hₜ = (1-zₜ) ⊙ hₜ₋₁ + zₜ ⊙ h̃ₜ','No separate cell state — only hidden state hₜ','2 gates instead of 3 → fewer parameters (~⅔ of LSTM)','<strong>Performance:</strong> Comparable to LSTM on most tasks; slightly faster to train'], note:'The update gate in GRU combines LSTM\'s forget and input gates into one: what you forget is exactly what you replace with new info.'},
+  {title:'Applications of RNNs &amp; LSTMs', body:'LSTMs dominated NLP from 2013-2017 before Transformers took over:', points:['<strong>Language modeling:</strong> Predict next word → generate text (RNN-LMs)','<strong>Sentiment analysis:</strong> Many-to-one — final hₜ encodes sentence sentiment','<strong>Named Entity Recognition:</strong> Many-to-many — label each word (Bi-LSTM + CRF)','<strong>Machine translation:</strong> Encoder-decoder LSTM (next lecture: Seq2Seq)','<strong>Speech recognition:</strong> Bi-LSTM processes audio frames → text (CTC loss)','<strong>Image captioning:</strong> CNN (image encoder) → LSTM (text decoder)','<strong>Music generation:</strong> Sequence → sequence of notes','<strong>Why replaced by Transformers:</strong> Sequential processing (can\'t parallelize), limited long-range even with LSTM']}
+]);
+
+renderDiagrams('diagrams', [
+  {
+    title: 'RNN Unrolled Over Time',
+    type: 'flow',
+    steps: ['x₁ → h₁', 'x₂ → h₂', 'x₃ → h₃', '...', 'xₜ → hₜ → ŷₜ'],
+    caption: 'The same weights (Wₓ, Wₕ) are applied at every step. Each hₜ depends on all previous inputs x₁...xₜ. For a 100-word sentence, this creates a 100-layer deep network.'
+  },
+  {
+    title: 'RNN Cell — Single Step Computation',
+    type: 'architecture',
+    layers: [
+      {label:'Output', content:'ŷₜ = softmax(Wᵧ · hₜ)'},
+      {label:'Hidden State', content:'hₜ = tanh(Wₓ · xₜ + Wₕ · hₜ₋₁ + b)'},
+      {label:'Inputs', content:'xₜ (current input) + hₜ₋₁ (previous hidden state)'}
+    ],
+    caption: 'At each timestep: combine current input embedding with previous hidden state, apply tanh, produce new hidden state and optionally an output.'
+  },
+  {
+    title: 'Sequence Modeling Configurations',
+    type: 'table',
+    headers: ['Type', 'Input→Output', 'Example Task', 'Use Final hₜ?'],
+    rows: [
+      ['Many-to-One', 'Sequence → single label', 'Sentiment analysis', 'Yes (only hₜ)'],
+      ['One-to-Many', 'Single input → sequence', 'Image captioning', 'h₀ from image'],
+      ['Many-to-Many (aligned)', 'Sequence → same-length seq', 'POS tagging, NER', 'Every hₜ → yₜ'],
+      ['Many-to-Many (diff len)', 'Sequence → diff-length seq', 'Translation', 'Encoder → Decoder'],
+      ['Bidirectional', 'Sequence → enriched seq', 'Any (better context)', 'Concat forward+backward']
+    ],
+    caption: 'The same RNN architecture supports many task types by changing which hidden states are used for output.'
+  },
+  {
+    title: 'Vanishing Gradient: RNN vs LSTM',
+    type: 'compare',
+    left: {heading:'RNN Gradient Path', points:['∂hₜ/∂hₖ = Π (tanh\' × Wₕ)', 'Each factor typically < 1', 'After 30 steps: ~10⁻¹⁸ → zero!', 'Cannot learn long-range deps', 'Exploding: ‖Wₕ‖>1 → gradient →∞', 'Fix exploding: gradient clipping', 'Fix vanishing: CANNOT (architectural)']},
+    right: {heading:'LSTM Gradient Path', points:['∂Cₜ/∂Cₖ = Π fⱼ (forget gates)', 'Gates learn to be ≈1 (remember)', 'After 30 steps: ~1.0 → preserved!', 'CAN learn 100+ step dependencies', 'Additive update: no Wₕ multiplication', 'Network controls gradient flow', '"Gradient highway" through cell state']}
+  },
+  {
+    title: 'LSTM Cell — Complete Gate Architecture',
+    type: 'architecture',
+    layers: [
+      {label:'Output', content:'hₜ = oₜ ⊙ tanh(Cₜ) — filtered cell state becomes hidden state'},
+      {label:'Output Gate', content:'oₜ = σ(Wₒ · [hₜ₋₁, xₜ] + bₒ) — what to reveal'},
+      {label:'Cell Update', content:'Cₜ = fₜ ⊙ Cₜ₋₁ + iₜ ⊙ C̃ₜ — ADDITIVE update (gradient highway!)'},
+      {label:'Input Gate + Candidate', content:'iₜ = σ(Wᵢ·[hₜ₋₁,xₜ]+bᵢ)  ⊙  C̃ₜ = tanh(Wc·[hₜ₋₁,xₜ]+bc) — what new info to add'},
+      {label:'Forget Gate', content:'fₜ = σ(Wf · [hₜ₋₁, xₜ] + bf) — what to erase from old cell state'},
+      {label:'Inputs', content:'hₜ₋₁ (previous hidden state), Cₜ₋₁ (previous cell state), xₜ (current input)'}
+    ],
+    caption: 'Information flows bottom-to-top. The cell state update (center) is the core innovation: additive combination of filtered old info + filtered new info.'
+  },
+  {
+    title: 'Forget Gate in Action: Subject-Verb Agreement',
+    type: 'table',
+    headers: ['Step', 'Input', 'Forget Gate fₜ', 'Cell State Effect'],
+    rows: [
+      ['1', '"She"', '[1.0, 1.0]', 'Stores [+female, +singular]'],
+      ['2-10', 'intervening words', '[0.9, 0.95]', 'Slight decay, info mostly preserved'],
+      ['11', '"was" (verb)', '[0.9, 0.9]', 'Cell still has [female, singular] → correct agreement'],
+      ['12', '"They"', '[0.1, 0.1]', 'ERASE old subject → make room for new'],
+      ['13', '"were"', '[0.9, 0.9]', 'Cell now has [neutral, plural] → correct agreement']
+    ],
+    caption: 'The forget gate learns to preserve grammatical information across many timesteps, then erase it when a new subject appears.'
+  },
+  {
+    title: 'Cell State Update: The Gradient Highway',
+    type: 'flow',
+    steps: ['Cₜ₋₁ (old cell)', '× fₜ (forget filter)', '+ iₜ⊙C̃ₜ (new filtered info)', '= Cₜ (new cell)', '→ tanh → × oₜ → hₜ'],
+    caption: 'The "+" in the cell update is the CRITICAL design choice. Additive paths have gradient = 1, allowing information to flow over 100+ timesteps without vanishing.'
+  },
+  {
+    title: 'LSTM vs GRU Comparison',
+    type: 'compare',
+    left: {heading:'LSTM (1997)', points:['3 gates: forget, input, output', 'Separate cell state Cₜ + hidden state hₜ', '4 weight matrices (4 × d(d+n) params)', 'More expressive: independent forget/input', 'Standard choice for most tasks', 'Forget gate controls gradient flow']},
+    right: {heading:'GRU (2014)', points:['2 gates: reset, update', 'Only hidden state hₜ (no cell state)', '3 weight matrices (~75% of LSTM params)', 'Simpler: update gate = 1 - forget gate', 'Comparable performance, faster training', 'Update gate controls gradient flow']}
+  },
+  {
+    title: 'Evolution: Feedforward → RNN → LSTM → Transformer',
+    type: 'table',
+    headers: ['Architecture', 'Year', 'Memory', 'Parallelizable?', 'Long-Range?', 'Key Innovation'],
+    rows: [
+      ['Feedforward NN', '1986', 'None', 'Yes', 'No', 'Backpropagation'],
+      ['Simple RNN', '1990', 'Hidden state', 'No', 'No (vanishing grad)', 'Recurrence + weight sharing'],
+      ['LSTM', '1997', 'Cell + hidden state', 'No', 'Yes (100+ steps)', 'Gated additive cell state'],
+      ['GRU', '2014', 'Hidden state', 'No', 'Yes (simpler)', 'Fewer gates, comparable quality'],
+      ['Transformer', '2017', 'Attention over all', 'Yes!', 'Yes (any distance)', 'Self-attention (parallel)']
+    ],
+    caption: 'Each architecture solved a key limitation of its predecessor. Transformers solved the parallelization bottleneck of RNNs/LSTMs.'
+  }
 ]);
 
 renderMath('math', [
-  {name:'RNN Hidden State', formula:'hₜ = tanh(Wₕ · hₜ₋₁ + Wₓ · xₜ + b)', desc:'Recurrent computation — same W shared across all timesteps'},
-  {name:'RNN Output', formula:'yₜ = softmax(Wᵧ · hₜ)', desc:'Predict at each timestep (or just final step for classification)'},
-  {name:'Vanishing Gradient', formula:'∂hₜ/∂h₁ = Πₖ₌₁ᵗ⁻¹ diag(tanh\'(hₖ)) · Wₕ', desc:'Product of many terms < 1 → exponentially small gradient'},
-  {name:'Forget Gate', formula:'fₜ = σ(Wf · [hₜ₋₁, xₜ] + bf)', desc:'σ outputs 0-1: close to 0 = forget, close to 1 = remember'},
-  {name:'Input Gate', formula:'iₜ = σ(Wᵢ · [hₜ₋₁, xₜ] + bᵢ)', desc:'Controls which entries of cell state to update'},
-  {name:'Candidate Cell', formula:'C̃ₜ = tanh(Wc · [hₜ₋₁, xₜ] + bc)', desc:'New candidate values to potentially add to cell state'},
-  {name:'Cell State Update', formula:'Cₜ = fₜ ⊙ Cₜ₋₁ + iₜ ⊙ C̃ₜ', desc:'⊙ = element-wise multiply. ADDITIVE path prevents gradient vanishing.'},
-  {name:'Output Gate', formula:'oₜ = σ(Wₒ · [hₜ₋₁, xₜ] + bₒ)', desc:'Filters cell state for hidden state output'},
-  {name:'Hidden State', formula:'hₜ = oₜ ⊙ tanh(Cₜ)', desc:'Squash cell state through tanh, filter through output gate'},
-  {name:'LSTM Parameter Count', formula:'Params = 4 × (d² + d·n + d)', desc:'4 weight matrices for 4 gates, d=hidden size, n=input size'}
+  {name:'RNN Pre-activation', formula:'zₜ = Wₓ · xₜ + Wₕ · hₜ₋₁ + b', desc:'Linear combination of current input and previous hidden state. Wₓ ∈ ℝ^{d×n}, Wₕ ∈ ℝ^{d×d}.'},
+  {name:'RNN Hidden State', formula:'hₜ = tanh(zₜ) = tanh(Wₓ · xₜ + Wₕ · hₜ₋₁ + b)', desc:'Squashed to [-1,1]. This IS the recurrent computation — same W at every step.'},
+  {name:'RNN Output', formula:'ŷₜ = softmax(Wᵧ · hₜ + bᵧ)', desc:'Probability distribution over vocabulary at each timestep.'},
+  {name:'Vanishing Gradient Formula', formula:'∂hₜ/∂hₖ = Πⱼ₌ₖ₊₁ᵗ diag(tanh\'(zⱼ)) × Wₕ', desc:'Product of t-k matrices. If each factor has norm <1, gradient vanishes exponentially.'},
+  {name:'tanh Derivative', formula:'tanh\'(x) = 1 − tanh²(x)', desc:'Maximum at x=0: tanh\'(0)=1. For trained networks, typically 0.1-0.5. This is why gradients shrink.'},
+  {name:'Gradient Clipping', formula:'if ‖∇‖ > θ: ∇ ← ∇ × (θ / ‖∇‖)', desc:'Rescale gradient to max norm θ (typically 5-10). Fixes exploding gradients but NOT vanishing.'},
+  {name:'Forget Gate', formula:'fₜ = σ(Wf · [hₜ₋₁, xₜ] + bf)', desc:'σ ∈ (0,1). Wf ∈ ℝ^{d×(d+n)}. Element-wise: which cell dimensions to erase.'},
+  {name:'Input Gate', formula:'iₜ = σ(Wᵢ · [hₜ₋₁, xₜ] + bᵢ)', desc:'Which cell dimensions to update with new values.'},
+  {name:'Candidate Cell Values', formula:'C̃ₜ = tanh(Wc · [hₜ₋₁, xₜ] + bc)', desc:'Proposed new values ∈ (-1,1). The input gate decides which ones get written.'},
+  {name:'Cell State Update (Core)', formula:'Cₜ = fₜ ⊙ Cₜ₋₁ + iₜ ⊙ C̃ₜ', desc:'THE key equation. Additive update → gradient through cell is just fₜ (not Wₕ × tanh\'). This solves vanishing gradients.'},
+  {name:'Output Gate', formula:'oₜ = σ(Wₒ · [hₜ₋₁, xₜ] + bₒ)', desc:'Which cell dimensions to reveal as the hidden state output.'},
+  {name:'LSTM Hidden State', formula:'hₜ = oₜ ⊙ tanh(Cₜ)', desc:'Squash cell state to [-1,1], then filter through output gate. This is what external layers see.'},
+  {name:'LSTM Cell Gradient', formula:'∂Cₜ/∂Cₜ₋₁ = fₜ', desc:'Gradient through the cell state is simply the forget gate value. If fₜ≈1 → gradient ≈ 1 → no vanishing!'},
+  {name:'LSTM Parameter Count', formula:'Params = 4 × [(d+n) × d + d] = 4d² + 4dn + 4d', desc:'4 gates × (weight matrix d×(d+n) + bias d). d=hidden size, n=input size.'},
+  {name:'GRU Reset Gate', formula:'rₜ = σ(Wr · [hₜ₋₁, xₜ])', desc:'How much of past hidden state to keep when computing candidate.'},
+  {name:'GRU Update Gate', formula:'zₜ = σ(Wz · [hₜ₋₁, xₜ])', desc:'How much to update (≈ combined LSTM forget + input gate).'},
+  {name:'GRU Hidden State', formula:'hₜ = (1−zₜ) ⊙ hₜ₋₁ + zₜ ⊙ h̃ₜ', desc:'Convex combination: (1−z) preserves old, z adds new. Note: no separate cell state.'}
 ]);
 
 renderDryRun('dryrun', [
   {
-    title: 'RNN Forward: 3 timesteps, input dim=2, hidden dim=2',
+    title: 'RNN Forward Pass: 3 timesteps, input dim n=2, hidden dim d=2',
     steps: [
-      'h₀ = [0, 0] (initial hidden state)',
+      'h₀ = [0, 0] (initial hidden state, typically zeros)',
       'Wₓ = [[0.5, 0.3],[0.2, 0.7]], Wₕ = [[0.1, 0.4],[0.6, 0.2]], b = [0, 0]',
-      'x₁ = [1, 0]: h₁ = tanh([0.5×1+0.3×0, 0.2×1+0.7×0] + [0,0] + [0,0]) = tanh([0.5, 0.2]) = [0.462, 0.197]',
-      'x₂ = [0, 1]: h₂ = tanh(Wₓ·[0,1] + Wₕ·[0.462,0.197]) = tanh([0.3+0.125, 0.7+0.317]) = tanh([0.425, 1.017]) = [0.402, 0.768]',
-      'x₃ = [1, 1]: h₃ = tanh(Wₓ·[1,1] + Wₕ·[0.402,0.768]) = tanh([0.8+0.347, 0.9+0.395]) = tanh([1.147, 1.295]) = [0.816, 0.860]'
+      '--- Step 1: x₁ = [1, 0] ---',
+      'z₁ = Wₓ·[1,0] + Wₕ·[0,0] + [0,0] = [0.5,0.2] + [0,0] = [0.5, 0.2]',
+      'h₁ = tanh([0.5, 0.2]) = [0.462, 0.197]',
+      '--- Step 2: x₂ = [0, 1] ---',
+      'z₂ = Wₓ·[0,1] + Wₕ·[0.462,0.197] = [0.3,0.7] + [0.462×0.1+0.197×0.4, 0.462×0.6+0.197×0.2]',
+      '= [0.3, 0.7] + [0.125, 0.317] = [0.425, 1.017]',
+      'h₂ = tanh([0.425, 1.017]) = [0.402, 0.768]',
+      '--- Step 3: x₃ = [1, 1] ---',
+      'z₃ = Wₓ·[1,1] + Wₕ·[0.402,0.768] = [0.8,0.9] + [0.347,0.395] = [1.147, 1.295]',
+      'h₃ = tanh([1.147, 1.295]) = [0.816, 0.860]'
     ],
-    result: 'Hidden states: h₁=[0.462,0.197], h₂=[0.402,0.768], h₃=[0.816,0.860]. Each depends on ALL prior inputs.'
+    result: 'h₁=[0.462,0.197], h₂=[0.402,0.768], h₃=[0.816,0.860]. Each hₜ integrates info from ALL prior inputs. h₃ depends on x₁, x₂, x₃ through the recurrent chain.'
   },
   {
-    title: 'LSTM Gates: forget gate decides to reset or remember',
+    title: 'LSTM Full Forward Pass: single timestep, d=2, n=1',
     steps: [
-      'Previous cell: Cₜ₋₁ = [0.8, -0.3] (tracking subject="she", number=singular)',
-      'New input: xₜ = embedding("They") → signals plural',
-      'Forget gate: fₜ = σ(...) = [0.1, 0.9] → forget slot 0 (old subject), keep slot 1',
-      'Cell after forget: fₜ ⊙ Cₜ₋₁ = [0.08, -0.27]',
-      'Input gate: iₜ = [0.9, 0.2], C̃ₜ = [0.7, 0.1]',
-      'New cell: Cₜ = [0.08+0.63, -0.27+0.02] = [0.71, -0.25]',
-      'Old subject info forgotten, new "They" info stored in slot 0'
+      'State: hₜ₋₁ = [0.5, -0.3], Cₜ₋₁ = [0.8, -0.5], xₜ = [0.6]',
+      'Concatenation: [hₜ₋₁, xₜ] = [0.5, -0.3, 0.6]',
+      '--- Forget Gate ---',
+      'Wf·[0.5,-0.3,0.6] + bf = (assume) [1.2, -0.5]',
+      'fₜ = σ([1.2, -0.5]) = [0.769, 0.378]',
+      '--- Input Gate ---',
+      'Wᵢ·[0.5,-0.3,0.6] + bᵢ = [0.3, 1.5]',
+      'iₜ = σ([0.3, 1.5]) = [0.574, 0.818]',
+      '--- Candidate ---',
+      'Wc·[0.5,-0.3,0.6] + bc = [-0.2, 0.7]',
+      'C̃ₜ = tanh([-0.2, 0.7]) = [-0.197, 0.604]',
+      '--- Cell State Update ---',
+      'fₜ ⊙ Cₜ₋₁ = [0.769×0.8, 0.378×(-0.5)] = [0.615, -0.189]',
+      'iₜ ⊙ C̃ₜ = [0.574×(-0.197), 0.818×0.604] = [-0.113, 0.494]',
+      'Cₜ = [0.615+(-0.113), -0.189+0.494] = [0.502, 0.305]',
+      '--- Output Gate ---',
+      'Wₒ·[0.5,-0.3,0.6] + bₒ = [0.8, -0.1]',
+      'oₜ = σ([0.8, -0.1]) = [0.690, 0.475]',
+      '--- Hidden State ---',
+      'tanh(Cₜ) = tanh([0.502, 0.305]) = [0.464, 0.296]',
+      'hₜ = oₜ ⊙ tanh(Cₜ) = [0.690×0.464, 0.475×0.296] = [0.320, 0.141]'
     ],
-    result: 'Forget gate selectively erases old subject while preserving other information in cell state.'
+    result: 'Final: Cₜ=[0.502, 0.305], hₜ=[0.320, 0.141]. Cell dim 0: fₜ=0.77 kept most of old value. Cell dim 1: fₜ=0.38 forgot half + added new → net positive shift.'
   },
   {
-    title: 'Why LSTM solves vanishing gradient',
+    title: 'Forget Gate Selectively Erasing: "She was happy. They were sad."',
     steps: [
-      'RNN gradient: ∂hₜ/∂h₁ = product of (Wₕ · tanh\') at each step → shrinks exponentially',
-      'LSTM gradient through cell: ∂Cₜ/∂Cₜ₋₁ = fₜ (just the forget gate!)',
-      'Over many steps: ∂Cₜ/∂C₁ = fₜ × fₜ₋₁ × ... × f₂',
-      'If forget gates ≈ 1 (remembering): gradient ≈ 1 — no vanishing!',
-      'The ADDITIVE cell update (not multiplicative) is the key insight'
+      'After "She": Cell stores [+0.9, +0.8] (dim 0=gender:female, dim 1=number:singular)',
+      'Through "was happy": fₜ ≈ [0.95, 0.95] at each step → cell barely changes',
+      'After 3 steps: C = [0.9×0.95³, 0.8×0.95³] = [0.771, 0.685] — info persists!',
+      'Period ".": fₜ ≈ [0.5, 0.5] → some decay: C = [0.386, 0.343]',
+      'Word "They": fₜ = [0.05, 0.05] → STRONG FORGET → C = [0.019, 0.017] ≈ [0, 0]',
+      'Input gate writes new info: iₜ = [0.9, 0.9], C̃ₜ = [-0.8, +0.9] (neutral, plural)',
+      'New C = [0.019+(-0.72), 0.017+0.81] = [-0.701, 0.827] → subject updated!'
     ],
-    result: 'LSTM cell state has a "gradient highway" — additive updates let gradients flow over 100+ timesteps.'
+    result: 'The forget gate preserved "She/singular" for 4 timesteps, then sharply erased it when "They" appeared. This is how LSTMs handle long-range subject-verb agreement.'
+  },
+  {
+    title: 'Vanishing Gradient: RNN with tanh after 10 timesteps',
+    steps: [
+      'Assume tanh\'(zⱼ) ≈ 0.5 at each step (realistic for trained networks)',
+      'Assume ‖Wₕ‖ ≈ 0.9 (typical)',
+      'Gradient factor per step: ‖tanh\'(zⱼ) × Wₕ‖ ≈ 0.5 × 0.9 = 0.45',
+      'After 10 steps: 0.45¹⁰ = 0.000341 (gradient reduced by 2933×)',
+      'After 20 steps: 0.45²⁰ = 1.16 × 10⁻⁷ (practically zero!)',
+      'After 30 steps: 0.45³⁰ = 3.95 × 10⁻¹¹ (truly vanished)',
+      '--- Compare LSTM ---',
+      'LSTM cell gradient factor: fₜ (forget gate ≈ 0.95 when remembering)',
+      'After 10 steps: 0.95¹⁰ = 0.599 (gradient reduced by only 1.67×)',
+      'After 20 steps: 0.95²⁰ = 0.358',
+      'After 30 steps: 0.95³⁰ = 0.215 (still substantial!)'
+    ],
+    result: 'At 30 steps: RNN gradient ≈ 10⁻¹¹ (vanished), LSTM gradient ≈ 0.21 (usable). This is a 5×10⁹ difference! LSTM can learn 100+ step dependencies.'
+  },
+  {
+    title: 'LSTM Parameter Count: d=256, n=100 (input embedding dim)',
+    steps: [
+      'Each gate needs a weight matrix for [hₜ₋₁, xₜ] and a bias:',
+      'Input concatenation: [hₜ₋₁, xₜ] has dimension d+n = 256+100 = 356',
+      'One gate: W ∈ ℝ^{d×(d+n)} + b ∈ ℝ^d = 256×356 + 256 = 91,136 + 256 = 91,392',
+      'Four gates (forget, input, candidate, output): 4 × 91,392 = 365,568',
+      'Output layer: Wᵧ ∈ ℝ^{V×d} (for V=50,000): 50,000 × 256 = 12,800,000',
+      'Embedding: V × n = 50,000 × 100 = 5,000,000',
+      'Total LSTM cell: 365,568 parameters',
+      'Total model: 365,568 + 12,800,000 + 5,000,000 = 18,165,568 ≈ 18.2M'
+    ],
+    result: 'LSTM cell itself has ~366K params (manageable). The embedding and output layers dominate (17.8M) due to vocabulary size V.'
+  },
+  {
+    title: 'GRU Forward Pass: compare to LSTM',
+    steps: [
+      'hₜ₋₁ = [0.5, -0.3], xₜ = [0.6]. Concat = [0.5, -0.3, 0.6]',
+      '--- Reset Gate ---',
+      'rₜ = σ(Wr · [0.5,-0.3,0.6]) = (assume) σ([0.8, -0.4]) = [0.690, 0.401]',
+      '--- Update Gate ---',
+      'zₜ = σ(Wz · [0.5,-0.3,0.6]) = σ([1.0, 0.2]) = [0.731, 0.550]',
+      '--- Candidate ---',
+      'rₜ ⊙ hₜ₋₁ = [0.690×0.5, 0.401×(-0.3)] = [0.345, -0.120]',
+      'h̃ₜ = tanh(W · [0.345,-0.120,0.6]) = tanh([0.5, 0.8]) = [0.462, 0.664]',
+      '--- Hidden State Update ---',
+      'hₜ = (1-zₜ)⊙hₜ₋₁ + zₜ⊙h̃ₜ',
+      '= [0.269×0.5, 0.450×(-0.3)] + [0.731×0.462, 0.550×0.664]',
+      '= [0.135, -0.135] + [0.338, 0.365] = [0.473, 0.230]'
+    ],
+    result: 'GRU output: hₜ=[0.473, 0.230]. Similar to LSTM hₜ=[0.320, 0.141] but with fewer computations (2 gates vs 4, no separate cell state).'
   }
 ]);
 
 renderExercises('exercises', [
-  {q:'Why do vanilla RNNs struggle with long sequences?', options:['Too many parameters','Vanishing gradients from repeated matrix multiplication','Too slow','Limited vocabulary'], correct:1, explanation:'Product of many Wₕ and tanh\' terms → gradients shrink exponentially.'},
-  {q:'The LSTM forget gate output is in range:', options:['(-∞, ∞)','(-1, 1)','(0, 1)','(0, ∞)'], correct:2, explanation:'Sigmoid σ outputs (0,1). Close to 0 = forget, close to 1 = remember.'},
-  {q:'What makes LSTM gradient flow better than RNN?', options:['Bigger matrices','Additive cell state update instead of multiplicative','Faster training','More layers'], correct:1, explanation:'Cₜ = fₜ⊙Cₜ₋₁ + iₜ⊙C̃ₜ. The additive path lets gradients flow without vanishing.'},
-  {q:'How many gate weight matrices does a standard LSTM have?', options:['1','2','3','4'], correct:3, explanation:'4 gates: forget (Wf), input (Wᵢ), candidate (Wc), output (Wₒ). Each has its own weights.'},
-  {q:'If hidden_size=256 and input_size=100, how many LSTM parameters (approximate)?', answer:'4 × (256×256 + 256×100 + 256) = 4 × (65,536 + 25,600 + 256) = 4 × 91,392 = 365,568 parameters for one LSTM layer.'}
+  {q:'Why do vanilla RNNs struggle with long sequences?', options:['Too many parameters','Vanishing gradients from repeated matrix multiplication (Wₕ × tanh\')','Too slow','Limited vocabulary'], correct:1, explanation:'∂hₜ/∂hₖ = Π(tanh\' × Wₕ). Each factor typically <1, product shrinks exponentially → gradient ≈ 0 for distant timesteps.'},
+  {q:'The LSTM forget gate output is in range:', options:['(-∞, ∞)','(-1, 1)','(0, 1)','(0, ∞)'], correct:2, explanation:'Sigmoid σ outputs (0,1). Close to 0 = forget that cell dimension. Close to 1 = remember it.'},
+  {q:'What makes LSTM gradient flow better than RNN?', options:['Bigger matrices','Additive cell state update creates gradient highway','Faster training','More layers'], correct:1, explanation:'Cₜ = fₜ⊙Cₜ₋₁ + iₜ⊙C̃ₜ. Gradient through "+" is 1. Through cell: ∂Cₜ/∂Cₜ₋₁ = fₜ (not Wₕ×tanh\').'},
+  {q:'How many gate weight matrices does a standard LSTM have?', options:['1','2','3','4'], correct:3, explanation:'4 gates: forget (Wf), input (Wᵢ), candidate (Wc), output (Wₒ). Each has its own weight matrix.'},
+  {q:'If hidden_size d=256 and input_size n=100, how many LSTM parameters?', answer:'4 × (d×(d+n) + d) = 4 × (256×356 + 256) = 4 × 91,392 = 365,568 parameters for one LSTM cell.'},
+  {q:'In the cell state update Cₜ = fₜ⊙Cₜ₋₁ + iₜ⊙C̃ₜ, what happens when fₜ≈1 and iₜ≈0?', answer:'Cₜ ≈ 1⊙Cₜ₋₁ + 0⊙C̃ₜ = Cₜ₋₁. The cell state passes through UNCHANGED. This is how information persists for 100+ timesteps — the network learns to keep the forget gate ≈1 and input gate ≈0 for important information.'},
+  {q:'What is the gradient of the cell state: ∂Cₜ/∂Cₜ₋₁?', options:['Wₕ × tanh\'','fₜ (forget gate)','iₜ (input gate)','oₜ (output gate)'], correct:1, explanation:'From Cₜ = fₜ⊙Cₜ₋₁ + iₜ⊙C̃ₜ: derivative w.r.t. Cₜ₋₁ is fₜ. No weight matrix! This is why gradients don\'t vanish.'},
+  {q:'Why is the forget gate bias often initialized to 1?', answer:'bf = 1 → σ(Wf·x + 1) is biased toward large values → fₜ ≈ 1. This means the cell REMEMBERS by default at the start of training. The network then learns which information to forget. Without this, cells would forget everything before learning what to remember.'},
+  {q:'Gradient clipping fixes ___ but NOT ___:', options:['Vanishing / Exploding','Exploding / Vanishing','Both / Neither','Neither / Both'], correct:1, explanation:'Clipping caps gradient norm → fixes exploding. But vanishing means gradient ≈ 0, and you can\'t "unclip" a zero gradient. Architectural changes (LSTM) are needed.'},
+  {q:'How does GRU differ from LSTM?', answer:'GRU: 2 gates (reset, update) vs LSTM\'s 4. No separate cell state — only hidden state. Update gate combines forgot+input: hₜ = (1-z)⊙hₜ₋₁ + z⊙h̃ₜ. ~75% parameters. Similar performance in practice.'},
+  {q:'RNN gradient after 20 steps if tanh\'≈0.4 and ‖Wₕ‖≈0.8:', answer:'Gradient factor per step ≈ 0.4 × 0.8 = 0.32. After 20 steps: 0.32²⁰ = 1.15 × 10⁻¹⁰. This is effectively zero — the network cannot learn any relationship between inputs 20 timesteps apart.'},
+  {q:'What is the difference between cell state Cₜ and hidden state hₜ?', answer:'Cₜ = long-term memory (internal). Updated via additive gate mechanism. Can persist for 100+ steps. NOT directly visible outside the cell. hₜ = short-term output (external). Computed as hₜ = oₜ ⊙ tanh(Cₜ). Used for predictions and as input to next timestep. The output gate controls what part of cell state becomes visible.'},
+  {q:'For bidirectional LSTM with d=128: what is the output dimension at each position?', options:['128','256','512','64'], correct:1, explanation:'Forward LSTM: hₜ_fwd ∈ ℝ^128. Backward LSTM: hₜ_bwd ∈ ℝ^128. Concatenated: [hₜ_fwd; hₜ_bwd] ∈ ℝ^256.'},
+  {q:'Why did Transformers replace LSTMs?', answer:'(1) LSTMs process sequentially — can\'t parallelize over positions → slow at training time. (2) Despite solving vanishing gradients, LSTMs still struggle with very long sequences (>500 tokens). (3) Transformers use self-attention to connect ANY two positions directly — O(1) path length. (4) Transformers fully exploit GPU parallelism. (5) Result: Transformers train faster and perform better on every benchmark.'}
 ]);
 
 renderChecklist('checklist', [
-  'Draw an unrolled RNN over 3 timesteps with weight sharing',
-  'Compute RNN forward pass by hand (3 steps)',
-  'Draw complete LSTM cell with all 4 gates labeled',
-  'Explain vanishing gradient: why the product shrinks',
-  'Explain how additive cell update solves the problem',
-  'Know LSTM parameter count formula: 4(d² + dn + d)',
-  'Give the forget gate example: subject-verb agreement across clauses',
-  'Compare RNN vs LSTM vs GRU (3 gates vs 2 gates)'
+  'Draw an unrolled RNN over 3+ timesteps with SAME Wₓ, Wₕ at every step',
+  'Write the RNN equations: zₜ, hₜ, ŷₜ and dimensions of each matrix',
+  'Compute a complete RNN forward pass by hand (3 timesteps)',
+  'Name all 5 sequence modeling configurations (many-to-one, etc.) with example tasks',
+  'Explain BPTT: unroll → forward → backward → accumulate gradients',
+  'Derive the vanishing gradient formula: ∂hₜ/∂hₖ = Π(tanh\' × Wₕ)',
+  'Compute gradient magnitude after N steps given typical tanh\' and ‖Wₕ‖ values',
+  'Explain why gradient clipping fixes exploding but NOT vanishing gradients',
+  'Give 3 examples of long-distance dependencies in natural language',
+  'Draw the complete LSTM cell with all 4 gates and both state vectors',
+  'Write all 6 LSTM equations from memory (fₜ, iₜ, C̃ₜ, Cₜ, oₜ, hₜ)',
+  'Explain the forget gate with the subject-verb agreement example',
+  'Explain the input gate + candidate: WHERE vs WHAT to write',
+  'Explain the cell state update equation and WHY "+" solves vanishing gradients',
+  'Derive ∂Cₜ/∂Cₜ₋₁ = fₜ and explain the "gradient highway"',
+  'Explain the output gate: cell state vs hidden state difference',
+  'Compute LSTM parameter count: 4d² + 4dn + 4d and give a numerical example',
+  'Know forget gate bias initialization (bf=1) and why it matters',
+  'Write GRU equations and compare: 2 gates, no cell state, ~75% params',
+  'Explain why Transformers replaced LSTMs (parallelization, O(1) path length)'
 ], 'w9');
 </script>
 </body></html>

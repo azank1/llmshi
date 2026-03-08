@@ -17,68 +17,121 @@
 <div class="meta">30 slides · Text preprocessing, feature extraction, word representations</div>
 
 <div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Architecture &amp; Flow Diagrams</h2><div id="diagrams"></div></div>
 <div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
-<div class="lec-section"><h2>Dry Run — Text Preprocessing Pipeline</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Dry Runs — Preprocessing &amp; Feature Extraction</h2><div id="dryrun"></div></div>
 <div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
 <div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
 </div>
 <script src="js/lecture.js"></script>
 <script>
 renderSlides('slides', [
-  ['What is NLP?','Branch of AI that receives human language, processes it to understand meaning, generates appropriate responses'],
-  ['Language as Knowledge','Language preserves and propagates knowledge across time and space'],
-  ['NLP Applications','Translation, summarization, sentiment analysis, chatbots, search, QA'],
-  ['Text Preprocessing Pipeline','Raw text → Clean → Normalize → Stop words → Lemmatize → Feature extract'],
-  ['Cleaning','Remove HTML tags, symbols, non-alphabetic chars, excessive punctuation, extra spaces'],
-  ['Normalization','Convert to lowercase: "The Pakistan Cricket Team" → "the pakistan cricket team"'],
-  ['Stop Words Removal','Remove common words: a, an, the, is, etc. Focus on content words'],
-  ['Lemmatization','Convert to root: "won"→"win", "led"→"lead", "thrilling"→"thrilling"'],
-  ['POS Tagging','Assign grammatical roles: noun, verb, adjective, adverb to each token'],
-  ['Named Entity Recognition (NER)','Identify: person names, organizations, locations, dates, numerical values'],
-  ['Denotation vs Connotation','Denotation = literal meaning. Connotation = associated feelings/implied meaning'],
-  ['WordNet','Online lexical database — synonyms organized into synsets with semantic relations'],
-  ['SentiWordNet','WordNet + sentiment scores (positive/negative/objective) for opinion mining'],
-  ['WordNet Limitations','Missing new meanings: "wicked" (bad → cool), "wizard" (magic → expert)'],
-  ['Feature Extraction','How to convert text to numbers for neural networks?'],
-  ['Random Encoding','Assign arbitrary numbers — "I"=1, "live"=2. Problem: implies ordering'],
-  ['ASCII/Unicode','Character-level numbers — individual chars don\'t carry word meaning'],
-  ['One-Hot Encoding','Vector length = vocabulary size. Each word = one 1, rest 0s. Sparse!']
+  {title:'What is Natural Language Processing (NLP)?', body:'NLP is a branch of AI that receives human language, processes it, and acts upon it or responds.', points:['<strong>Input:</strong> Human language — spoken or written text','<strong>Process:</strong> Understand meaning, structure, and intent','<strong>Output:</strong> Appropriate response, classification, translation, or action','NLP is <strong>multidisciplinary:</strong> borrows from AI, computational linguistics, cognitive science, statistics'], note:'NLP is the foundation on which all LLMs are built. Understanding these fundamentals is essential for everything that follows.'},
+  {title:'Why NLP is Important', body:'Language is the primary medium for knowledge transfer across human civilization:', points:['Language preserves and propagates knowledge <strong>across time</strong> (books) and <strong>across space</strong> (communication)','Human bandwidth for generating, processing, and propagating knowledge is limited','If computers can understand natural language → massive acceleration of human knowledge work','Applications: translation, summarization, search, QA, chatbots, sentiment analysis, code generation']},
+  {title:'NLP Tasks Overview', body:'The major categories of NLP tasks:', points:['<strong>Text Preprocessing:</strong> Convert raw text to clean, structured data','<strong>Information Retrieval:</strong> Find relevant documents (search engines)','<strong>Classification:</strong> Sentiment analysis, spam detection, topic categorization','<strong>Text Generation:</strong> Summarization, translation, dialogue, code generation','<strong>Entity &amp; Relation Extraction:</strong> NER, knowledge base construction','<strong>Text Reasoning:</strong> QA, entailment, fact verification, fake news detection']},
+  {title:'Language Complexity', body:'Human languages are incredibly complex — understanding this complexity is the first step to NLP:', points:['"She poured water from the jug into the cup until <em>it</em> was full" — "it" = cup','"She poured water from the jug into the cup until <em>it</em> was empty" — "it" = jug','<strong>Same structure, different meaning!</strong> Requires world knowledge to disambiguate','Words alone don\'t convey meaning — needs context, inference, common sense','Languages use <strong>compression:</strong> speakers rely on listener knowledge to fill gaps']},
+  {title:'Denotation vs Connotation', body:'Every word has both a literal meaning (denotation) and associated meanings (connotation):', points:['<strong>Denotation</strong> (literal): Home = a place to live. Plant = a manufacturing facility.','<strong>Connotation</strong> (implied): Home = security, family, shelter. Plant = colonies, conceal.','<strong>"Childish"</strong> — Denotation: like a child. Connotation: innocent, stupid, immature.','Denotation used in formal communication; connotation in poetry and literature','NLP must handle both levels of meaning!']},
+  {title:'The NLP Pipeline', body:'Processing natural language follows a three-stage pipeline:', points:['<strong>Stage 1 — Text Processing:</strong> Raw text → clean, normalize, convert to suitable form for features','<strong>Stage 2 — Feature Extraction:</strong> Extract/produce feature representations appropriate for the task','<strong>Stage 3 — Modeling:</strong> Design model, fit parameters, train, evaluate, predict','Additional steps may be added depending on the specific application'], note:'Each stage has multiple sub-steps. The quality of preprocessing directly impacts model performance.'},
+  {title:'Text Preprocessing Operations', body:'Step-by-step cleaning and normalization of raw text:', points:['<strong>Cleaning:</strong> Remove HTML tags, symbols, non-alphabetic chars, excessive punctuation, extra spaces','<strong>Normalization:</strong> Convert to lowercase (case folding)','<strong>Tokenization:</strong> Split text into individual words/tokens','<strong>Stop Words Removal:</strong> Remove most common words (a, an, the, is, etc.)','<strong>Stemming:</strong> Chop suffixes to get approximate root: "thrilling" → "thrill", "running" → "run"','<strong>Lemmatization:</strong> Convert to actual dictionary root: "won" → "win", "led" → "lead", "better" → "good"'], note:'Stemming is faster but crude (may produce non-words). Lemmatization uses dictionary lookup and is more accurate.'},
+  {title:'POS Tagging', body:'Parts of Speech tagging assigns grammatical roles to each token:', points:['<strong>Noun (NN):</strong> cricket, team, match','<strong>Proper Noun (NNP):</strong> Pakistan, Salman, Agha','<strong>Verb (VB/VBD):</strong> win, lead','<strong>Adjective (JJ):</strong> thrilling','POS tags provide syntactic structure information','Used as features for downstream tasks like NER, parsing, and machine translation']},
+  {title:'Named Entity Recognition (NER)', body:'NER identifies real-world entities and classifies them into categories:', points:['<strong>Person:</strong> Salman Agha','<strong>Country:</strong> Pakistan, India','<strong>Organization:</strong> ICC','<strong>Event:</strong> T20 World Cup','<strong>Date:</strong> 2026','NER is critical for information extraction, knowledge graph construction, and question answering']},
+  {title:'WordNet — Lexical Database', body:'WordNet is a large online lexical database of English organized by meaning:', points:['Words organized into <strong>synsets</strong> (sets of synonyms representing one concept)','118,000+ word forms, 90,000+ senses','~17% of words are polysemous (multiple meanings)','~40% share at least one sense with another word','Six semantic relations: synonymy, antonymy, hypernymy, hyponymy, meronymy, holonymy','Applications: information retrieval, text classification, word sense disambiguation']},
+  {title:'SentiWordNet &amp; WordNet Limitations', body:'Extensions and problems with lexical databases:', points:['<strong>SentiWordNet:</strong> Adds positivity, negativity, and objectivity scores to every WordNet synset','Enables automated sentiment analysis and opinion mining','<strong>WordNet Limitations:</strong> Missing new meanings — "wicked" (bad → cool), "wizard" (magic → expert), "ninja" (warrior → expert)','Requires manual curation — cannot keep up with language evolution','Doesn\'t capture context-dependent meaning changes']},
+  {title:'Feature Extraction — From Text to Numbers', body:'Computers need numbers, not words. How do we convert text to numerical features?', points:['<strong>Random Encoding:</strong> Assign arbitrary numbers (I=1, live=2). Problem: implies ordering (2 > 1 means "live" > "I"?)','<strong>ASCII/Unicode:</strong> Character-level numbers. Problem: individual chars don\'t carry word meaning','<strong>One-Hot Encoding:</strong> Vector length = vocabulary size. Each word = one 1, rest 0s. Sparse!','<strong>Bag of Words (BoW):</strong> Document as word frequency vector. Ignores word order.','<strong>TF-IDF:</strong> Frequency × rarity weighting. Better than raw counts.','<strong>Dense Embeddings:</strong> Word2Vec, GloVe — compact vectors capturing semantics (next week!)']},
+  {title:'One-Hot Encoding — Detailed', body:'The simplest word representation — and its fundamental problems:', points:['Each word gets a vector of dimension V (vocabulary size)','Only one position is 1, all others are 0: cat = [1,0,0,0], dog = [0,1,0,0]','<strong>Problem 1:</strong> No similarity — cos(cat, dog) = 0 even though both are pets','<strong>Problem 2:</strong> Dimensionality — if V = 50,000, every word needs a 50,000-dim vector','<strong>Problem 3:</strong> No semantics — the numbers carry no meaning about the word','This motivates the need for dense, learned embeddings (Word2Vec in Week 7)'], note:'One-hot encoding treats all words as equally different from each other — "cat" is as different from "dog" as from "quantum".'}
+]);
+
+renderDiagrams('diagrams', [
+  {
+    title: 'NLP Pipeline — Three Stages',
+    type: 'flow',
+    steps: ['Raw Text', 'Text Processing', 'Feature Extraction', 'Modeling', 'Predictions'],
+    caption: 'The core NLP pipeline: raw text → cleaned/normalized text → numerical features → trained model → predictions.'
+  },
+  {
+    title: 'Text Preprocessing Pipeline — Detailed Steps',
+    type: 'flow',
+    steps: ['Raw Text', 'Cleaning', 'Normalization', 'Tokenization', 'Stop Words', 'Stemming / Lemmatization', 'Clean Tokens'],
+    caption: 'Each step reduces noise and transforms text closer to a format suitable for feature extraction.'
+  },
+  {
+    title: 'Feature Representation Evolution',
+    type: 'flow',
+    steps: ['Random Numbers', 'ASCII/Unicode', 'One-Hot (V-dim, sparse)', 'Bag of Words', 'TF-IDF', 'Dense Embeddings (d-dim)'],
+    caption: 'Evolution from naive to sophisticated text representations. Dense embeddings (Week 7) solve the limitations of all prior approaches.'
+  },
+  {
+    title: 'Stemming vs Lemmatization',
+    type: 'compare',
+    left: {heading:'Stemming', points:['Chops suffixes mechanically','Fast and simple (rule-based)','May produce non-words: "studies"→"studi"','Does not use dictionary','Porter/Snowball stemmer','Good enough for search/IR']},
+    right: {heading:'Lemmatization', points:['Uses dictionary/morphological analysis','Slower but more accurate','Always produces real words: "studies"→"study"','Uses vocabulary + POS tags','WordNet lemmatizer, spaCy','Better for understanding/generation']}
+  },
+  {
+    title: 'One-Hot Encoding Visualization',
+    type: 'table',
+    headers: ['Word', 'cat', 'dog', 'fish', 'bird', 'Properties'],
+    rows: [
+      ['cat', '<strong>1</strong>', '0', '0', '0', 'Sparse, no similarity info'],
+      ['dog', '0', '<strong>1</strong>', '0', '0', 'cos(cat,dog) = 0'],
+      ['fish', '0', '0', '<strong>1</strong>', '0', 'cos(cat,fish) = 0'],
+      ['bird', '0', '0', '0', '<strong>1</strong>', 'All pairs equally distant']
+    ],
+    caption: 'Every word is orthogonal to every other word. No semantic relationships captured. V=4 here; in practice V=50,000+.'
+  },
+  {
+    title: 'WordNet Semantic Relations',
+    type: 'table',
+    headers: ['Relation', 'Example', 'Description'],
+    rows: [
+      ['Synonymy', 'big ↔ large', 'Same meaning'],
+      ['Antonymy', 'big ↔ small', 'Opposite meaning'],
+      ['Hypernymy', 'animal → dog', '"Is-a" parent (more general)'],
+      ['Hyponymy', 'dog → poodle', '"Is-a" child (more specific)'],
+      ['Meronymy', 'wheel → car', '"Part-of" relationship'],
+      ['Holonymy', 'car → wheel', '"Has-part" relationship']
+    ]
+  }
 ]);
 
 renderMath('math', [
-  {name:'One-Hot Vector', formula:'v(word_i) = [0, 0, ..., 1, ..., 0]  (1 at position i, V-dimensional)', desc:'Sparse representation — V can be 100,000+. No similarity between words.'},
-  {name:'One-Hot Orthogonality', formula:'cos(v(cat), v(dog)) = 0', desc:'All word pairs have zero similarity — major limitation'},
-  {name:'Vocabulary Size Problem', formula:'V = |unique words|, each vector is V-dimensional', desc:'If V=50,000, every word needs a 50,000-dim vector. Extremely wasteful.'},
-  {name:'Bag of Words', formula:'BoW(doc) = [count(w₁), count(w₂), ..., count(wᵥ)]', desc:'Document as word frequency vector — ignores word order'},
-  {name:'TF (Term Frequency)', formula:'tf(t,d) = count(t in d) / |d|', desc:'How often term t appears in document d, normalized by doc length'},
-  {name:'IDF (Inverse Doc Frequency)', formula:'idf(t) = log(N / df(t))', desc:'Rare words get high weight, common words get low weight. N = total docs.'},
-  {name:'TF-IDF', formula:'tfidf(t,d) = tf(t,d) × idf(t)', desc:'Combines term frequency with rarity — better than raw counts'}
+  {name:'One-Hot Vector', formula:'v(wordᵢ) = [0, 0, ..., 1, ..., 0]  (1 at position i, V-dimensional)', desc:'Sparse representation — V can be 100,000+. No similarity between any pair of words.'},
+  {name:'One-Hot Orthogonality', formula:'cos(v(cat), v(dog)) = 0  for ALL word pairs', desc:'Every pair has zero similarity — "cat" and "dog" are as different as "cat" and "quantum".'},
+  {name:'Bag of Words', formula:'BoW(doc) = [count(w₁), count(w₂), ..., count(wᵥ)]', desc:'Document as word frequency vector. Ignores word order: "dog bites man" = "man bites dog".'},
+  {name:'Term Frequency', formula:'tf(t,d) = count(t in d) / |d|', desc:'How often term t appears in document d, normalized by document length.'},
+  {name:'Inverse Document Frequency', formula:'idf(t) = log(N / df(t))', desc:'Rare words get high weight (low df), common words get low weight (high df). N = total docs.'},
+  {name:'TF-IDF', formula:'tfidf(t,d) = tf(t,d) × idf(t)', desc:'Combines frequency with rarity. Common words like "the" get near-zero weight. Rare domain words get high weight.'},
+  {name:'IDF of Universal Word', formula:'idf("the") = log(N/N) = log(1) = 0', desc:'A word appearing in ALL documents has zero IDF — effectively eliminated from the representation.'},
+  {name:'Vocabulary Size Problem', formula:'V = |unique words|, each vector is V-dimensional', desc:'If V=50,000, storing 1M documents requires 1M × 50K = 50 billion entries (mostly zeros).'}
 ]);
 
 renderDryRun('dryrun', [
   {
-    title: 'Preprocess: "The Pakistan Cricket Team, led by Salman Agha, won the thrilling match against India!"',
+    title: 'Full Preprocessing: "The Pakistan Cricket Team, led by Salman Agha, won the thrilling match against India!!!"',
     steps: [
-      'Clean: "The Pakistan Cricket Team led by Salman Agha won the thrilling match against India"',
-      'Normalize: "the pakistan cricket team led by salman agha won the thrilling match against india"',
-      'Tokenize: ["the","pakistan","cricket","team","led","by","salman","agha","won","the","thrilling","match","against","india"]',
-      'Remove stops: ["pakistan","cricket","team","led","salman","agha","won","thrilling","match","india"]',
-      'Lemmatize: ["pakistan","cricket","team","lead","salman","agha","win","thrilling","match","india"]'
+      'CLEAN: Remove punctuation, extra spaces → "The Pakistan Cricket Team led by Salman Agha won the thrilling match against India"',
+      'NORMALIZE: Lowercase → "the pakistan cricket team led by salman agha won the thrilling match against india"',
+      'TOKENIZE: Split → ["the","pakistan","cricket","team","led","by","salman","agha","won","the","thrilling","match","against","india"] (14 tokens)',
+      'STOP WORDS: Remove {the, by, against} → ["pakistan","cricket","team","led","salman","agha","won","thrilling","match","india"] (10 tokens)',
+      'LEMMATIZE: "led"→"lead", "won"→"win" → ["pakistan","cricket","team","lead","salman","agha","win","thrilling","match","india"]'
     ],
-    result: '14 raw tokens → 10 cleaned tokens. Key info preserved.'
+    result: '14 raw tokens → 10 cleaned, lemmatized tokens. Key information preserved, noise removed. 29% token reduction.'
   },
   {
-    title: 'TF-IDF: 3 documents, compute for word "cricket"',
+    title: 'TF-IDF Computation: 3 documents, word "cricket"',
     steps: [
-      'Doc1: "pakistan cricket team wins" — cricket appears 1/4',
-      'Doc2: "india cricket board" — cricket appears 1/3',
-      'Doc3: "football world cup" — cricket appears 0/3',
-      'tf("cricket", Doc1) = 1/4 = 0.25',
+      'Doc1: "pakistan cricket team wins" (4 words)',
+      'Doc2: "india cricket board" (3 words)',
+      'Doc3: "football world cup" (3 words)',
+      'tf("cricket", Doc1) = 1/4 = 0.250',
+      'tf("cricket", Doc2) = 1/3 = 0.333',
+      'tf("cricket", Doc3) = 0/3 = 0.000',
       'df("cricket") = 2 (appears in 2 of 3 docs)',
       'idf("cricket") = log(3/2) = 0.405',
-      'tfidf("cricket", Doc1) = 0.25 × 0.405 = 0.101'
+      'tfidf(Doc1) = 0.250 × 0.405 = 0.101',
+      'tfidf(Doc2) = 0.333 × 0.405 = 0.135',
+      'tfidf(Doc3) = 0.000 × 0.405 = 0.000'
     ],
-    result: 'TF-IDF("cricket", Doc1) = 0.101. Compare: a word in ALL docs would have idf = log(3/3) = 0'
+    result: 'Cricket has moderate IDF (appears in 2/3 docs). Compare: a word in ALL docs → idf = log(3/3) = 0 → TF-IDF = 0.'
   },
   {
     title: 'One-Hot Encoding: Vocab = {cat, dog, fish, bird}',
@@ -87,29 +140,52 @@ renderDryRun('dryrun', [
       'dog  = [0, 1, 0, 0]',
       'fish = [0, 0, 1, 0]',
       'bird = [0, 0, 0, 1]',
-      'cos(cat, dog) = (1×0+0×1+0×0+0×0)/(1×1) = 0',
+      'cos(cat, dog) = (1×0 + 0×1 + 0×0 + 0×0) / (1 × 1) = 0',
+      'cos(cat, fish) = 0 (same calculation)',
       'Problem: "cat" and "dog" are both pets but similarity = 0!'
     ],
-    result: 'One-hot treats all words as equally different. Need dense embeddings.'
+    result: 'One-hot treats ALL word pairs as equally different. We need dense embeddings to capture semantic similarity.'
+  },
+  {
+    title: 'NER Pipeline: "Salman Agha scored 89 runs for Pakistan in the ICC T20 World Cup 2026"',
+    steps: [
+      'Tokenize: ["Salman", "Agha", "scored", "89", "runs", "for", "Pakistan", "in", "the", "ICC", "T20", "World", "Cup", "2026"]',
+      'POS Tag: [NNP, NNP, VBD, CD, NNS, IN, NNP, IN, DT, NNP, NNP, NNP, NNP, CD]',
+      'NER: "Salman Agha" → PERSON',
+      'NER: "89" → NUMBER (runs scored)',
+      'NER: "Pakistan" → COUNTRY/GPE',
+      'NER: "ICC" → ORGANIZATION',
+      'NER: "T20 World Cup" → EVENT',
+      'NER: "2026" → DATE'
+    ],
+    result: '6 named entities extracted. These structured facts can populate a knowledge graph or answer specific questions.'
   }
 ]);
 
 renderExercises('exercises', [
-  {q:'What is the main problem with one-hot encoding for NLP?', options:['Too slow','No semantic similarity — all words equidistant','Requires GPUs','Only works for English'], correct:1, explanation:'cos similarity between any two one-hot vectors is 0.'},
-  {q:'If vocabulary V=10,000, what is the dimension of each one-hot vector?', options:['100','1,000','10,000','100,000'], correct:2, explanation:'One-hot vectors are V-dimensional: one position per unique word.'},
+  {q:'What is the main problem with one-hot encoding for NLP?', options:['Too slow','No semantic similarity — all words equidistant','Requires GPUs','Only works for English'], correct:1, explanation:'Cosine similarity between any two one-hot vectors is always 0 — no semantic information.'},
+  {q:'If V=10,000, what is the dimension of each one-hot vector?', options:['100','1,000','10,000','100,000'], correct:2, explanation:'One-hot vectors are V-dimensional: one position per unique word.'},
   {q:'What does IDF measure?', options:['Word frequency in a document','How rare a word is across all documents','Sentence length','Grammar correctness'], correct:1, explanation:'IDF = log(N/df) — high for rare words, low for common words.'},
-  {q:'Calculate TF-IDF for "the" if it appears in ALL 100 documents', answer:'idf("the") = log(100/100) = log(1) = 0. TF-IDF = tf × 0 = 0. Common words get zero TF-IDF weight, effectively eliminating them.'},
-  {q:'Lemmatize these words: running, better, went, mice', answer:'running → run, better → good, went → go, mice → mouse. Lemmatization uses dictionary lookup (unlike stemming which just chops suffixes).'}
+  {q:'Calculate TF-IDF for "the" if it appears in ALL 100 documents', answer:'idf("the") = log(100/100) = log(1) = 0. Therefore TF-IDF = tf × 0 = 0 regardless of tf. Common words like "the" are effectively eliminated by IDF.'},
+  {q:'Lemmatize: running, better, went, mice', answer:'running → run, better → good, went → go, mice → mouse. Lemmatization uses dictionary lookup and morphological analysis — not just suffix removal like stemming.'},
+  {q:'What is the difference between stemming and lemmatization?', options:['No difference','Stemming uses dictionary; lemmatization chops suffixes','Stemming chops suffixes mechanically; lemmatization uses dictionary to find real root words','Lemmatization is faster'], correct:2, explanation:'Stemming: "studies"→"studi" (not a word). Lemmatization: "studies"→"study" (real word via dictionary lookup).'},
+  {q:'POS tag the sentence: "The cat sat on the mat"', answer:'The=DT(determiner), cat=NN(noun), sat=VBD(past-tense verb), on=IN(preposition), the=DT(determiner), mat=NN(noun).'},
+  {q:'Name 4 types of named entities with examples', answer:'1) PERSON: Salman Agha. 2) ORGANIZATION: ICC. 3) LOCATION/GPE: Pakistan. 4) DATE: 2026. Also: EVENT (World Cup), NUMBER (89), MONEY ($100).'},
+  {q:'If vocab V=50,000 and we have 1M documents, how many entries in the full one-hot document-term matrix?', answer:'50,000 × 1,000,000 = 50 billion entries. Most are zeros (sparse). This is why dense representations like TF-IDF and embeddings are needed.'}
 ]);
 
 renderChecklist('checklist', [
-  'Know the full preprocessing pipeline: clean → normalize → tokenize → stop words → lemmatize',
-  'Distinguish stemming vs lemmatization with examples',
-  'Calculate TF-IDF by hand for a small corpus',
-  'Explain one-hot encoding and its limitations',
-  'Understand POS tagging and NER',
-  'Know WordNet structure: synsets, hypernyms, semantic relations',
-  'Explain why dense embeddings are needed (transition to Week 7)'
+  'Define NLP and explain why it matters for civilization',
+  'Know the full preprocessing pipeline: clean → normalize → tokenize → stop words → stem/lemmatize',
+  'Distinguish stemming vs lemmatization with examples of each',
+  'Explain POS tagging with at least 5 tag types (NN, NNP, VB, JJ, DT, IN)',
+  'Perform NER on a sentence — identify PERSON, ORG, LOCATION, DATE entities',
+  'Explain WordNet structure: synsets, and 6 semantic relations',
+  'Calculate TF-IDF by hand for a small corpus (3+ documents)',
+  'Explain one-hot encoding and its 3 limitations (no similarity, high dimension, no semantics)',
+  'Understand Bag of Words representation and its limitation (ignores word order)',
+  'Explain denotation vs connotation with examples',
+  'Know why dense embeddings are needed — transition to Word2Vec (Week 7)'
 ], 'w5');
 </script>
 </body></html>

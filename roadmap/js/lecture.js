@@ -109,6 +109,84 @@ function checkAnswer(eid) {
   }
 }
 
+/* ═══ Diagram rendering ═══ */
+function renderDiagrams(containerId, diagrams) {
+  const el = document.getElementById(containerId);
+  if (!el || !diagrams) return;
+  let html = '';
+  diagrams.forEach(function(d) {
+    html += '<div class="diagram-card">';
+    html += '<h4 class="diagram-title">' + d.title + '</h4>';
+
+    if (d.type === 'flow') {
+      html += '<div class="flow-diagram">';
+      d.steps.forEach(function(s, i) {
+        html += '<div class="flow-node">' + s + '</div>';
+        if (i < d.steps.length - 1) html += '<div class="flow-arrow">→</div>';
+      });
+      html += '</div>';
+    }
+
+    if (d.type === 'flow-vertical') {
+      html += '<div class="flow-diagram vertical">';
+      d.steps.forEach(function(s, i) {
+        html += '<div class="flow-node">' + s + '</div>';
+        if (i < d.steps.length - 1) html += '<div class="flow-arrow vertical">↓</div>';
+      });
+      html += '</div>';
+    }
+
+    if (d.type === 'architecture') {
+      html += '<div class="arch-diagram">';
+      d.layers.forEach(function(layer, i) {
+        html += '<div class="arch-layer">';
+        html += '<span class="arch-label">' + layer.label + '</span>';
+        html += '<span class="arch-content">' + layer.content + '</span>';
+        html += '</div>';
+        if (i < d.layers.length - 1) html += '<div class="arch-arrow">↕</div>';
+      });
+      html += '</div>';
+    }
+
+    if (d.type === 'compare') {
+      html += '<div class="compare-diagram">';
+      html += '<div class="compare-col"><h5>' + d.left.heading + '</h5><ul>';
+      d.left.points.forEach(function(p) { html += '<li>' + p + '</li>'; });
+      html += '</ul></div>';
+      html += '<div class="compare-vs">vs</div>';
+      html += '<div class="compare-col"><h5>' + d.right.heading + '</h5><ul>';
+      d.right.points.forEach(function(p) { html += '<li>' + p + '</li>'; });
+      html += '</ul></div>';
+      html += '</div>';
+    }
+
+    if (d.type === 'table') {
+      html += '<div class="diagram-table-wrap"><table class="diagram-table">';
+      html += '<thead><tr>';
+      d.headers.forEach(function(h) { html += '<th>' + h + '</th>'; });
+      html += '</tr></thead><tbody>';
+      d.rows.forEach(function(row) {
+        html += '<tr>';
+        row.forEach(function(cell) { html += '<td>' + cell + '</td>'; });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    if (d.type === 'grid') {
+      html += '<div class="diagram-grid">';
+      d.cells.forEach(function(c) {
+        html += '<div class="grid-cell"><strong>' + c.label + '</strong><span>' + c.value + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    if (d.caption) html += '<p class="diagram-caption">' + d.caption + '</p>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
 function renderChecklist(containerId, items, weekId) {
   const el = document.getElementById(containerId);
   if (!el || !items) return;

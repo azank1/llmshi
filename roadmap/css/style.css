@@ -123,4 +123,49 @@ a{color:var(--text);text-decoration:none}
   .lecture-page{padding:1.5rem 1rem 3rem}
   .week-grid{grid-template-columns:1fr}
   .topbar{padding:.5rem 1rem}
+  .flow-diagram{flex-direction:column}
+  .compare-diagram{flex-direction:column}
+  .compare-vs{margin:.5rem 0}
+  .diagram-grid{grid-template-columns:1fr 1fr}
 }
+
+/* ─── DIAGRAM CARDS ─── */
+.diagram-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;margin-bottom:1rem;overflow-x:auto}
+.diagram-title{font-size:.95rem;font-weight:700;margin-bottom:.75rem;padding-bottom:.35rem;border-bottom:2px solid #eee}
+.diagram-caption{font-size:.82rem;color:var(--muted);margin-top:.75rem;font-style:italic}
+
+/* flow diagram */
+.flow-diagram{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;justify-content:center;padding:.5rem 0}
+.flow-diagram.vertical{flex-direction:column}
+.flow-node{background:#f5f5f5;border:1px solid #d0d0d0;border-radius:6px;padding:.45rem .85rem;font-size:.82rem;font-weight:500;text-align:center;min-width:80px;transition:all .15s}
+.flow-node:hover{background:#e8e8e8;border-color:#999}
+.flow-arrow{font-size:1.1rem;color:#999;font-weight:700;flex-shrink:0}
+.flow-arrow.vertical{font-size:1rem}
+
+/* architecture diagram */
+.arch-diagram{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.5rem 0}
+.arch-layer{display:flex;align-items:center;gap:.75rem;background:#f8f8f8;border:1px solid #d0d0d0;border-radius:6px;padding:.5rem 1rem;min-width:320px;justify-content:space-between;transition:all .15s}
+.arch-layer:hover{background:#eee;border-color:#999}
+.arch-label{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:100px}
+.arch-content{font-size:.85rem;text-align:right;flex:1}
+.arch-arrow{font-size:.9rem;color:#bbb}
+
+/* compare diagram */
+.compare-diagram{display:flex;gap:1rem;align-items:flex-start}
+.compare-col{flex:1;background:#f8f8f8;border:1px solid var(--border);border-radius:var(--radius);padding:1rem}
+.compare-col h5{font-size:.88rem;font-weight:700;margin-bottom:.5rem;padding-bottom:.3rem;border-bottom:1px solid #ddd}
+.compare-col ul{margin:0;padding-left:1.25rem;font-size:.83rem;line-height:1.7}
+.compare-vs{font-size:.85rem;font-weight:700;color:#bbb;align-self:center;padding:.5rem 0}
+
+/* table diagram */
+.diagram-table-wrap{overflow-x:auto}
+.diagram-table{width:100%;border-collapse:collapse;font-size:.83rem}
+.diagram-table th{background:#f5f5f5;font-weight:600;padding:.5rem .75rem;border:1px solid var(--border);text-align:left}
+.diagram-table td{padding:.45rem .75rem;border:1px solid var(--border)}
+.diagram-table tr:hover td{background:#fafafa}
+
+/* grid diagram */
+.diagram-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem}
+.grid-cell{background:#f8f8f8;border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;text-align:center}
+.grid-cell strong{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.2rem}
+.grid-cell span{font-size:.88rem;font-weight:600}

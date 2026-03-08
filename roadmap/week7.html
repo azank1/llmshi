@@ -14,93 +14,215 @@
 <div class="lecture-page">
 <div class="breadcrumb"><a href="index.html">Home</a> / Week 7</div>
 <h1>Lecture 07 — Word2Vec</h1>
-<div class="meta">19 slides · Lab 7: Word2Vec &amp; Co-occurrence Matrices</div>
+<div class="meta">19 slides · Prediction-based embeddings, Skip-gram, CBOW, negative sampling, word analogies</div>
 
 <div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Architecture &amp; Flow Diagrams</h2><div id="diagrams"></div></div>
 <div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
-<div class="lec-section"><h2>Dry Run — Skip-gram Training</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Dry Runs — Skip-gram &amp; CBOW Training</h2><div id="dryrun"></div></div>
 <div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
 <div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
 </div>
 <script src="js/lecture.js"></script>
 <script>
 renderSlides('slides', [
-  {title:'Prediction-based Word Embeddings', body:'Instead of counting co-occurrences (like TF-IDF), Word2Vec <em>learns</em> embeddings by predicting words from their context.', points:['Key idea: "You shall know a word by the company it keeps" (Firth, 1957)','Train a neural network on a prediction task → the hidden weights ARE the embeddings','Result: dense d-dimensional vectors (d=100-300) instead of sparse V-dimensional one-hot','These vectors capture semantic relationships: similar words → similar vectors'], note:'Word2Vec (Mikolov et al., 2013) revolutionized NLP by making high-quality word embeddings practical to train.'},
-  {title:'Word2Vec: Two Architectures', body:'Word2Vec consists of two complementary approaches — both learn embeddings, but the prediction direction differs:', points:['<strong>Skip-gram:</strong> given a center word → predict surrounding context words','<strong>CBOW (Continuous Bag of Words):</strong> given surrounding context → predict center word','Both use a shallow neural network (1 hidden layer, NO activation in hidden layer!)','The hidden layer weights become the word embedding matrix','Skip-gram works better for rare words; CBOW is faster and better for frequent words']},
-  {title:'Skip-gram Architecture — Detailed', body:'The network architecture for Skip-gram:', points:['<strong>Input:</strong> one-hot vector of center word (dimension V)','<strong>W₁ (V×d):</strong> input→hidden weight matrix. Multiplying one-hot × W₁ = selecting one row = the embedding!','<strong>Hidden layer:</strong> d-dimensional embedding (NO activation function!)','<strong>W₂ (d×V):</strong> hidden→output weight matrix','<strong>Output:</strong> softmax over vocabulary → probability of each word being in the context','Training: maximize P(context words | center word)']},
-  {title:'Skip-gram Training Pairs (window=2)', body:'From the sentence "My favorite PSL team is Lahore Qalandars" with window c=2:', points:['Center="My": context window → pairs: <strong>(My, favorite), (My, PSL)</strong>','Center="favorite": → <strong>(favorite, My), (favorite, PSL), (favorite, team)</strong>','Center="PSL": → <strong>(PSL, My), (PSL, favorite), (PSL, team), (PSL, is)</strong>','Center="team": → <strong>(team, favorite), (team, PSL), (team, is), (team, Lahore)</strong>','Each center word generates up to 2c pairs (fewer at sentence edges)'], note:'This is the training data generation step. No labels needed — the text IS the training signal.'},
-  {title:'Skip-gram Implementation Steps', body:'Four steps to train Skip-gram from scratch:', points:['<strong>Step 1:</strong> Build vocabulary of V unique words from corpus','<strong>Step 2:</strong> Generate training pairs (center, context) using sliding window','<strong>Step 3:</strong> Represent each word as one-hot vector of dimension V','<strong>Step 4:</strong> Feed pairs to the network, train with backpropagation','After training: row i of W₁ = the d-dimensional embedding of word i']},
-  {title:'CBOW Architecture — Detailed', body:'CBOW is the reverse of Skip-gram: predict the center word from its context.', points:['<strong>Input:</strong> multiple context word one-hot vectors (2c words for window c)','<strong>Averaging:</strong> context embeddings are averaged: v_ctx = (1/2c) Σ v(wⱼ)','<strong>Hidden:</strong> the averaged d-dimensional context vector','<strong>Output:</strong> softmax predicting the center word','<strong>Faster</strong> than Skip-gram (one prediction per position vs 2c predictions)','Better for <strong>frequent words</strong>; Skip-gram better for <strong>rare words</strong>']},
-  {title:'Embedding Weight Matrix', body:'The embedding matrix W₁ can be extracted from either the input or output side:', points:['<strong>Target embedding:</strong> W₁ (V×d) — the input word embedding matrix','<strong>Context embedding:</strong> W₂ᵀ (V×d) — the output word embedding matrix','Three options after training: use W₁, use W₂ᵀ, or average both','Most common: just use W₁ (the input embedding matrix)','Each row of W₁ is the d-dimensional embedding of one word']},
-  {title:'Training Objective — Maximize Log Probability', body:'The Skip-gram objective is to maximize the log probability of context words given center words:', points:['J = Σₜ Σ_{j∈window} log P(wₜ₊ⱼ | wₜ)','Sum over all positions t in corpus, and all context positions j in window','P(wₒ|wᵢ) = exp(uₒᵀ · vᵢ) / Σₖ exp(uₖᵀ · vᵢ)  (softmax)','uₒ = context vector of output word, vᵢ = embedding of input word','<strong>Problem:</strong> softmax denominator requires summing over ALL V words — extremely expensive for V=50,000+'], note:'This computational bottleneck motivates negative sampling.'},
-  {title:'Negative Sampling — Making Training Tractable', body:'Instead of computing the full softmax over V words, we reformulate as binary classification:', points:['For each positive pair (center, context): push their dot product to be LARGE','Sample K "negative" words randomly → push their dot products to be SMALL','Loss: L = −log σ(uₒᵀvᵢ) − Σₖ₌₁ᴷ log σ(−uₖᵀvᵢ)','σ(x) = sigmoid = 1/(1+e⁻ˣ)','Only update K+1 output vectors per training example instead of all V','Noise distribution: P(w) ∝ count(w)^{0.75} — slightly upweights rare words'], note:'K=5-20 for small datasets, K=2-5 for large datasets. This is what makes Word2Vec fast enough to train on billions of words.'},
-  {title:'Word2Vec Results — Semantic Arithmetic', body:'The most famous result: word embeddings capture linear semantic relationships:', points:['v(king) − v(man) + v(woman) ≈ v(queen)','v(Paris) − v(France) + v(Italy) ≈ v(Rome)','v(bigger) − v(big) + v(small) ≈ v(smaller)','These analogies emerge automatically from the training objective','The vector space encodes semantic and syntactic regularities','Cosine similarity between vectors measures word similarity'], note:'These properties made Word2Vec a breakthrough — the first practical demonstration that neural embeddings capture real semantic structure.'}
+  {title:'From Sparse to Dense: Why Prediction-based Embeddings?', body:'Count-based methods (TF-IDF, co-occurrence matrices) produce sparse, high-dimensional vectors. Prediction-based models learn dense embeddings directly.', points:['<strong>TF-IDF / One-hot:</strong> V-dimensional sparse vectors → 50,000+ dimensions, mostly zeros','<strong>Co-occurrence + SVD:</strong> Dense but ignores word ordering and requires expensive factorization','<strong>Prediction-based (Word2Vec):</strong> Dense d-dimensional vectors (d=100-300); learned by neural network','Key insight: "You shall know a word by the company it keeps" (Firth, 1957)','Result: words in similar contexts → similar vectors → capture semantic meaning','<strong>Impact:</strong> Word2Vec (Mikolov et al., 2013) — trained on Google News (100B words, 3M vocab)'], note:'Word2Vec made high-quality embeddings practical. Before this, most NLP used sparse bag-of-words features.'},
+  {title:'Word2Vec: Two Architectures', body:'Word2Vec provides two complementary approaches — both use a shallow (1-hidden-layer) neural network:', points:['<strong>Skip-gram:</strong> given center word → predict surrounding context words','<strong>CBOW (Continuous Bag of Words):</strong> given context words → predict center word','Both have ONE hidden layer with NO activation function (linear transformation only!)','The hidden layer weights become the word embedding matrix W₁ ∈ ℝ^{V×d}','<strong>Skip-gram:</strong> slower, better for rare words, works well on small data','<strong>CBOW:</strong> faster (one prediction per position), better for frequent words','Both produce similar quality embeddings; choice depends on use case']},
+  {title:'Skip-gram Architecture — Layer by Layer', body:'The Skip-gram neural network predicts context from center word:', points:['<strong>Input layer:</strong> one-hot vector x ∈ ℝ^V (dimension = vocabulary size)','<strong>W₁ (V×d):</strong> input embedding matrix. x × W₁ = just selects row i → this IS the embedding!','<strong>Hidden layer:</strong> h = W₁[i] ∈ ℝ^d (d-dimensional, NO activation function, NO bias)','<strong>W₂ (d×V):</strong> context embedding matrix. Scores = h × W₂ ∈ ℝ^V','<strong>Output layer:</strong> softmax(scores) → probability distribution over V words','<strong>Target:</strong> the actual context word should have highest probability','Loss = −log P(context_word | center_word) = cross-entropy'], note:'The "no activation" in the hidden layer is critical — it means the embedding is a direct linear lookup. This is fundamentally different from deeper networks.'},
+  {title:'Skip-gram Training Pairs: Sliding Window', body:'From "My favorite PSL team is Lahore Qalandars" with window c=2:', points:['Center="My": context=["favorite","PSL"] → pairs: <strong>(My,favorite), (My,PSL)</strong>','Center="favorite": context=["My","PSL","team"] → <strong>(favorite,My), (favorite,PSL), (favorite,team)</strong>','Center="PSL": context=["My","favorite","team","is"] → <strong>4 pairs</strong>','Center="team": context=["favorite","PSL","is","Lahore"] → <strong>4 pairs</strong>','Center="is": context=["PSL","team","Lahore","Qalandars"] → <strong>4 pairs</strong>','Center="Lahore": context=["team","is","Qalandars"] → <strong>3 pairs</strong>','Center="Qalandars": context=["is","Lahore"] → <strong>2 pairs</strong>','<strong>Total: 22 training pairs</strong> from a 7-word sentence!'], note:'No labels needed — the text IS the supervision signal. This self-supervised approach scales to billions of words.'},
+  {title:'CBOW Architecture — Layer by Layer', body:'CBOW reverses the Skip-gram direction: predict center from context words.', points:['<strong>Input:</strong> 2c context word one-hot vectors (for window size c)','<strong>Lookup:</strong> Each context word selects its row from W₁ → 2c embedding vectors','<strong>Average:</strong> v_ctx = (1/2c) Σ W₁[context_j] → single d-dimensional vector','<strong>Hidden:</strong> the averaged context embedding (NO activation, NO bias)','<strong>Output:</strong> softmax(v_ctx × W₂) → predict the center word','<strong>One prediction per position</strong> (vs 2c in Skip-gram) → significantly faster training','Averaging discards word order within the window — hence "bag of words"']},
+  {title:'The Embedding Matrix in Detail', body:'After training, the learned weight matrices contain the embeddings:', points:['<strong>W₁ ∈ ℝ^{V×d}</strong> — Target/input embedding matrix. Row i = embedding of word i.','<strong>W₂ ∈ ℝ^{d×V}</strong> — Context/output embedding matrix. Column j = context vector of word j.','W₁ and W₂ learn somewhat different representations','<strong>Options after training:</strong> (a) use W₁ only, (b) use W₂ᵀ only, (c) average W₁ + W₂ᵀ','Most common practice: just use W₁ as the final word embeddings','<strong>Parameter count:</strong> W₁ has V×d params, W₂ has d×V params → total 2×V×d']},
+  {title:'Training Objective: Maximum Log-Likelihood', body:'The Skip-gram objective maximizes the probability of observed context words given each center word:', points:['<strong>Objective:</strong> J(θ) = (1/T) Σₜ₌₁ᵀ Σ_{-c≤j≤c, j≠0} log P(wₜ₊ⱼ | wₜ)','T = total words in corpus, c = window size','P(wₒ|wᵢ) = exp(uₒᵀ · vᵢ) / Σₖ₌₁ᵛ exp(uₖᵀ · vᵢ)','uₒ = column of W₂ for output word, vᵢ = row of W₁ for input word','<strong>Computational bottleneck:</strong> denominator requires summing over ALL V words!','For V=50,000: every single training step requires 50,000 exp() computations','<strong>This makes full softmax infeasible</strong> → need approximation'], note:'This bottleneck motivated two solutions: Hierarchical Softmax (using a Huffman tree) and Negative Sampling.'},
+  {title:'Negative Sampling — The Key Speedup', body:'Replace the V-way softmax with binary classification: is this pair real or fake?', points:['<strong>Positive pair:</strong> (center, actual_context) → label = 1 → push dot product high','<strong>Negative pairs:</strong> sample K random words as fake context → label = 0 → push dot product low','<strong>Loss:</strong> L = −log σ(uₒᵀvᵢ) − Σₖ₌₁ᴷ log σ(−uₖᵀvᵢ)','σ(x) = 1/(1+e⁻ˣ) = sigmoid function','Only update K+1 output vectors per training step instead of all V!','<strong>Noise distribution:</strong> P(w) ∝ count(w)^{0.75} — sublinear: upweights rare words','<strong>K values:</strong> 5-20 for small datasets, 2-5 for large (Google used K=5 for 100B words)'], note:'Negative sampling reduces each update from O(V) to O(K). With K=5 and V=50,000, this is a 10,000× speedup!'},
+  {title:'Subsampling Frequent Words', body:'Very frequent words like "the", "a", "is" provide little useful signal but dominate training:', points:['<strong>Problem:</strong> "the" appears in almost every window → contributes noise, not meaning','<strong>Solution:</strong> Randomly discard frequent words during training with probability based on frequency','<strong>Discard probability:</strong> P(discard) = 1 − √(t / f(w)), where t ≈ 10⁻⁵ and f(w) = word frequency','Words with f(w) > t are increasingly likely to be dropped','A word appearing in 1% of corpus: P(discard) ≈ 96.8%','This speeds training AND improves embedding quality for rare words']},
+  {title:'Word2Vec Results: Semantic Arithmetic', body:'The breakthrough result: embeddings capture linear semantic and syntactic relationships:', points:['<strong>Gender:</strong> v(king) − v(man) + v(woman) ≈ v(queen)','<strong>Capital:</strong> v(Paris) − v(France) + v(Italy) ≈ v(Rome)','<strong>Comparative:</strong> v(bigger) − v(big) + v(small) ≈ v(smaller)','<strong>Tense:</strong> v(walked) − v(walking) + v(swimming) ≈ v(swam)','<strong>Plurality:</strong> v(cars) − v(car) + v(apple) ≈ v(apples)','These emerge automatically from training — no explicit supervision!','<strong>Evaluation:</strong> Use cosine similarity to find nearest neighbor: argmax cos(v_result, v_w)'], note:'The Google Word2Vec analogy test had 19,544 questions. Best accuracy: ~75%. Human accuracy on same test: ~80%.'},
+  {title:'Cosine Similarity &amp; Word Similarity', body:'How to measure if two word embeddings are similar:', points:['<strong>Cosine similarity:</strong> cos(u,v) = (u · v) / (‖u‖ · ‖v‖) — ranges from -1 to +1','cos = 1: identical direction (synonyms). cos = 0: orthogonal (unrelated). cos = -1: opposite.','Alternative: Euclidean distance ‖u-v‖, but cosine is preferred (invariant to vector magnitude)','<strong>Nearest neighbors of "king":</strong> queen, prince, monarch, ruler, throne','<strong>Nearest neighbors of "Python":</strong> Java, programming, language, code, Ruby','Word similarity benchmarks: WordSim-353, SimLex-999, MEN dataset']},
+  {title:'Limitations &amp; Extensions of Word2Vec', body:'Word2Vec has important limitations that later models address:', points:['<strong>Static embeddings:</strong> Each word gets ONE vector regardless of context — "bank" (river) = "bank" (finance)','<strong>Out-of-vocabulary (OOV):</strong> Cannot handle words not seen during training','<strong>No morphology:</strong> "run", "running", "runner" are treated as completely unrelated words','<strong>GloVe (2014):</strong> Combines count-based and prediction-based — global co-occurrence matrix + learning','<strong>FastText (2016):</strong> Learns subword (character n-gram) embeddings → handles OOV and morphology','<strong>ELMo (2018):</strong> Context-dependent embeddings using deep LSTMs','<strong>BERT (2019):</strong> Fully contextual — same word gets different vectors in different contexts']}
+]);
+
+renderDiagrams('diagrams', [
+  {
+    title: 'Skip-gram Architecture',
+    type: 'flow',
+    steps: ['One-Hot Input (V-dim)', 'W₁ (V×d)', 'Embedding (d-dim)', 'W₂ (d×V)', 'Softmax (V-dim)', 'P(context | center)'],
+    caption: 'Center word → one-hot → embedding lookup (W₁ row selection) → linear projection (W₂) → softmax → probability of each context word. No activation function in hidden layer.'
+  },
+  {
+    title: 'CBOW Architecture',
+    type: 'flow',
+    steps: ['Context Words (2c one-hots)', 'W₁ Lookup', 'Average Embeddings', 'W₂ (d×V)', 'Softmax', 'P(center | context)'],
+    caption: 'Multiple context words → embed each via W₁ → average → linear projection → softmax → predict center word.'
+  },
+  {
+    title: 'Negative Sampling: Binary Classification',
+    type: 'architecture',
+    layers: [
+      {label:'Loss', content:'L = −log σ(u_pos · v_center) − Σ log σ(−u_neg · v_center)'},
+      {label:'Classification', content:'σ(dot product) → 1 for positive, 0 for K negatives'},
+      {label:'Dot Products', content:'u_context · v_center for positive + K negative pairs'},
+      {label:'Sampling', content:'1 positive context word + K random negatives from P(w) ∝ count^0.75'},
+      {label:'Input', content:'Center word embedding v_center from W₁'}
+    ],
+    caption: 'Instead of V-way softmax, classify K+1 binary yes/no decisions. Reduces update from O(V) to O(K).'
+  },
+  {
+    title: 'Skip-gram vs CBOW',
+    type: 'compare',
+    left: {heading:'Skip-gram', points:['Center → predict context','Multiple predictions per position (2c)','Slower training','Better for rare words','Better on small datasets','Each position generates 2c training pairs']},
+    right: {heading:'CBOW', points:['Context → predict center','One prediction per position','Faster training (up to 10×)','Better for frequent words','Better on large datasets','Context is averaged (loses word order)']}
+  },
+  {
+    title: 'Word Embedding Space (Semantic Arithmetic)',
+    type: 'table',
+    headers: ['Relationship', 'Example', 'Vector Operation'],
+    rows: [
+      ['Gender', 'king → queen', 'v(king) − v(man) + v(woman)'],
+      ['Capital-Country', 'Paris → Rome', 'v(Paris) − v(France) + v(Italy)'],
+      ['Comparative', 'bigger → smaller', 'v(bigger) − v(big) + v(small)'],
+      ['Tense', 'walked → swam', 'v(walked) − v(walking) + v(swimming)'],
+      ['Plurality', 'cars → apples', 'v(cars) − v(car) + v(apple)']
+    ],
+    caption: 'Linear relationships emerge spontaneously in the embedding space. Evaluation: find word whose vector is closest (cosine similarity) to the result.'
+  },
+  {
+    title: 'Word2Vec Training Pipeline',
+    type: 'flow',
+    steps: ['Raw Corpus', 'Tokenize & Build Vocab (V words)', 'Generate (center, context) pairs', 'Initialize W₁, W₂ randomly', 'Train with Neg. Sampling (SGD)', 'Extract W₁ as Embeddings'],
+    caption: 'End-to-end pipeline from raw text to trained word embeddings. Self-supervised: no labeled data needed.'
+  },
+  {
+    title: 'Evolution of Word Representations',
+    type: 'table',
+    headers: ['Method', 'Year', 'Type', 'Vectors', 'Context-Aware?'],
+    rows: [
+      ['One-Hot', '—', 'Manual', 'Sparse, V-dim', 'No'],
+      ['TF-IDF', '1972', 'Count-based', 'Sparse, V-dim', 'No'],
+      ['LSA (SVD)', '1990', 'Count + factorize', 'Dense, d-dim', 'No'],
+      ['Word2Vec', '2013', 'Prediction-based', 'Dense, d-dim', 'No (static)'],
+      ['GloVe', '2014', 'Count + prediction', 'Dense, d-dim', 'No (static)'],
+      ['FastText', '2016', 'Subword prediction', 'Dense, d-dim', 'No (handles OOV)'],
+      ['ELMo', '2018', 'Deep LSTM', 'Dense, d-dim', 'Yes'],
+      ['BERT', '2019', 'Transformer', 'Dense, d-dim', 'Yes (full)']
+    ],
+    caption: 'Word2Vec sits at the critical inflection point: the shift from sparse count-based to dense learned representations.'
+  }
 ]);
 
 renderMath('math', [
-  {name:'Skip-gram Objective', formula:'J = Σₜ Σ_{-c≤j≤c, j≠0} log P(wₜ₊ⱼ | wₜ)', desc:'Maximize log probability of context words given center word, window size c'},
-  {name:'Softmax Output', formula:'P(wₒ|wᵢ) = exp(uₒᵀ · vᵢ) / Σⱼ₌₁ᵛ exp(uⱼᵀ · vᵢ)', desc:'uₒ = context vector of output word, vᵢ = embedding of input word'},
-  {name:'Negative Sampling Loss', formula:'L = -log σ(uₒᵀvᵢ) - Σₖ₌₁ᴷ log σ(-uₖᵀvᵢ)', desc:'Push positive pair close, push k negative pairs apart. σ = sigmoid.'},
-  {name:'Sigmoid', formula:'σ(x) = 1 / (1 + e⁻ˣ)', desc:'Maps dot product to [0,1] probability'},
-  {name:'Negative Sampling Distribution', formula:'P(w) = count(w)^0.75 / Σ count(w)^0.75', desc:'Raise to 0.75 power — gives rare words slightly higher chance of being sampled'},
-  {name:'CBOW Input', formula:'v_context = (1/2c) Σ v(wₜ₊ⱼ)', desc:'Average of context word embeddings as input to prediction'},
-  {name:'Word Analogy', formula:'v(king) - v(man) + v(woman) ≈ v(queen)', desc:'Linear relationships emerge: semantic arithmetic in embedding space'}
+  {name:'Skip-gram Objective', formula:'J(θ) = (1/T) Σₜ₌₁ᵀ Σ_{-c≤j≤c, j≠0} log P(wₜ₊ⱼ | wₜ)', desc:'Maximize log probability of context words given center word. T = corpus size, c = window size.'},
+  {name:'Softmax Output Probability', formula:'P(wₒ|wᵢ) = exp(uₒᵀ · vᵢ) / Σⱼ₌₁ᵛ exp(uⱼᵀ · vᵢ)', desc:'uₒ = context vector of output word (column of W₂), vᵢ = embedding of input word (row of W₁). Denominator sums over all V words.'},
+  {name:'Negative Sampling Loss', formula:'L = −log σ(uₒᵀvᵢ) − Σₖ₌₁ᴷ log σ(−uₖᵀvᵢ)', desc:'Maximize similarity of positive pair, minimize similarity of K negative pairs. Replaces O(V) softmax with O(K) binary classifications.'},
+  {name:'Sigmoid Function', formula:'σ(x) = 1 / (1 + e⁻ˣ)', desc:'Maps any real value to [0,1]. Used as probability estimate in negative sampling.'},
+  {name:'Negative Sampling Distribution', formula:'P(w) = count(w)^{0.75} / Σ_w count(w)^{0.75}', desc:'Sublinear scaling (exponent 0.75) upweights rare words compared to uniform sampling. Empirically found to work best.'},
+  {name:'CBOW Context Vector', formula:'v_ctx = (1/2c) Σⱼ₌₋ₖ^{c, j≠0} v(wₜ₊ⱼ)', desc:'Average of 2c context word embeddings. This average is the input to the output layer.'},
+  {name:'Cosine Similarity', formula:'cos(u,v) = (u · v) / (‖u‖ · ‖v‖)', desc:'Measures angle between two vectors. 1 = identical, 0 = orthogonal, -1 = opposite. Standard metric for word similarity.'},
+  {name:'Word Analogy', formula:'v(king) − v(man) + v(woman) ≈ v(queen)', desc:'Semantic arithmetic. Find: argmax_w cos(v(king)−v(man)+v(woman), v(w)).'},
+  {name:'Subsampling Probability', formula:'P(discard wᵢ) = 1 − √(t / f(wᵢ))', desc:'t ≈ 10⁻⁵. Words with frequency f(w) >> t are frequently discarded during training. Reduces noise from ultra-common words.'},
+  {name:'Parameter Count', formula:'Total params = 2 × V × d', desc:'W₁ ∈ ℝ^{V×d} + W₂ ∈ ℝ^{d×V}. For V=50K, d=300: 30M parameters total.'}
 ]);
 
 renderDryRun('dryrun', [
   {
-    title: 'Generate Skip-gram Training Pairs (window=2): "My favorite PSL team is Lahore Qalandars"',
+    title: 'Step 1: Generate Skip-gram Training Pairs (window c=2): "My favorite PSL team is Lahore Qalandars"',
     steps: [
-      'Center="My": context=["favorite","PSL"] → pairs: (My,favorite), (My,PSL)',
-      'Center="favorite": context=["My","PSL","team"] → (favorite,My), (favorite,PSL), (favorite,team)',
-      'Center="PSL": context=["My","favorite","team","is"] → (PSL,My), (PSL,favorite), (PSL,team), (PSL,is)',
-      'Center="team": context=["favorite","PSL","is","Lahore"] → 4 pairs',
-      'Continue for all words... Total pairs depend on window and sentence length'
+      'Vocabulary: {My=0, favorite=1, PSL=2, team=3, is=4, Lahore=5, Qalandars=6}. V=7.',
+      'Center="My"(idx 0): window=[1,2] → pairs: (0,1), (0,2) — 2 pairs',
+      'Center="favorite"(1): window=[0,2,3] → (1,0), (1,2), (1,3) — 3 pairs',
+      'Center="PSL"(2): window=[0,1,3,4] → (2,0), (2,1), (2,3), (2,4) — 4 pairs',
+      'Center="team"(3): window=[1,2,4,5] → (3,1), (3,2), (3,4), (3,5) — 4 pairs',
+      'Center="is"(4): window=[2,3,5,6] → (4,2), (4,3), (4,5), (4,6) — 4 pairs',
+      'Center="Lahore"(5): window=[3,4,6] → (5,3), (5,4), (5,6) — 3 pairs',
+      'Center="Qalandars"(6): window=[4,5] → (6,4), (6,5) — 2 pairs',
+      'Total: 2+3+4+4+4+3+2 = 22 training pairs from 7 words!'
     ],
-    result: 'Each word generates up to 2c pairs. 7-word sentence with c=2 → ~20 training pairs.'
+    result: 'Formula: each word generates up to 2c pairs. Interior words get 2c=4, edge words get fewer. Self-supervised: no human labels needed.'
   },
   {
-    title: 'Forward Pass: center word "PSL" (one-hot [0,0,1,0,0,0,0]), d=3',
+    title: 'Step 2: Forward Pass — center word "PSL" (one-hot), d=3',
     steps: [
-      'One-hot input x = [0,0,1,0,0,0,0] (V=7 vocab)',
-      'W₁ (7×3 embedding matrix) — hidden = x·W₁ = row 2 of W₁ = [0.2, -0.5, 0.8]',
-      'This IS the embedding of "PSL"!',
-      'W₂ (3×7 output matrix) — scores = hidden·W₂ = [1.2, 0.3, 0.1, -0.8, 0.5, 0.2, -0.4]',
-      'Softmax: exp each and normalize → P(each word as context)',
-      'Loss = -log P(actual_context_word)'
+      'One-hot: x = [0, 0, 1, 0, 0, 0, 0]  (index 2 is 1)',
+      'W₁ (7×3) randomly initialized, say row 2 = [0.2, -0.5, 0.8]',
+      'h = x · W₁ = row 2 of W₁ = [0.2, -0.5, 0.8]  ← this IS the embedding',
+      'W₂ (3×7) maps to scores: z = h · W₂ = [1.2, 0.3, 0.1, -0.8, 0.5, 0.2, -0.4]',
+      'Softmax: exp([1.2,0.3,0.1,-0.8,0.5,0.2,-0.4]) = [3.32,1.35,1.11,0.45,1.65,1.22,0.67]',
+      'Sum = 9.77. Probabilities = [0.34, 0.14, 0.11, 0.05, 0.17, 0.12, 0.07]',
+      'If target context word = "team" (idx 3): P = 0.05',
+      'Loss = -log(0.05) = 3.0 — high loss! Need to update weights.'
     ],
-    result: 'Embedding of "PSL" = [0.2, -0.5, 0.8]. Training adjusts this to predict context better.'
+    result: 'Low probability for target "team" (0.05) → high loss (3.0). Backprop will adjust W₁ and W₂ to increase P(team|PSL).'
   },
   {
-    title: 'Negative Sampling: positive=(PSL,team), K=2 negatives',
+    title: 'Step 3: Negative Sampling — positive=(PSL,team), K=2 negatives',
     steps: [
-      'Positive: push u_team · v_PSL to be LARGE → σ close to 1',
-      'Sample 2 random negatives: "the", "Lahore" (from noise distribution)',
-      'Negative 1: push u_the · v_PSL to be SMALL → σ(-x) close to 1',
-      'Negative 2: push u_Lahore · v_PSL to be SMALL',
-      'Loss = -log σ(u_team·v_PSL) - log σ(-u_the·v_PSL) - log σ(-u_Lahore·v_PSL)',
-      'Update only 3 output vectors instead of all V — much faster!'
+      'Positive pair: center="PSL" (v₂), context="team" (u₃)',
+      'Dot product: u₃ · v₂ = [0.3,-0.2,0.1] · [0.2,-0.5,0.8] = 0.06+0.10+0.08 = 0.24',
+      'σ(0.24) = 1/(1+e^-0.24) = 0.56. Want this close to 1.',
+      'Sample negatives from P(w) ∝ count^0.75: draw "My"(u₀) and "is"(u₄)',
+      'Neg 1: u₀ · v₂ = [0.5,0.1,-0.3] · [0.2,-0.5,0.8] = 0.10-0.05-0.24 = -0.19',
+      'σ(-(-0.19)) = σ(0.19) = 0.55. Want σ(-dot) close to 1 → need dot more negative.',
+      'Neg 2: u₄ · v₂ = 0.35. σ(-0.35) = 0.41. Want closer to 1 → need dot more negative.',
+      'Loss = -log(0.56) - log(0.55) - log(0.41) = 0.58 + 0.60 + 0.89 = 2.07',
+      'Update ONLY v₂, u₃, u₀, u₄ — 4 vectors instead of all 7!'
     ],
-    result: 'With K=2: compute 3 sigmoids instead of softmax over V=7. For V=50,000 this is huge.'
+    result: 'Neg sampling: 3 sigmoid computations + 4 vector updates. Full softmax would need 7 exp() + all 7 output vectors. At V=50K this is 10,000× faster.'
+  },
+  {
+    title: 'Step 4: CBOW Forward Pass — predict center "PSL" from context ["My","favorite","team","is"]',
+    steps: [
+      'Context words: My(0), favorite(1), team(3), is(4) — 4 context words (c=2)',
+      'Look up each in W₁: v₀=[0.1,0.3,-0.2], v₁=[0.4,-0.1,0.5], v₃=[-0.2,0.6,0.3], v₄=[0.3,0.2,-0.4]',
+      'Average: v_ctx = (1/4)([0.1+0.4-0.2+0.3, 0.3-0.1+0.6+0.2, -0.2+0.5+0.3-0.4])',
+      'v_ctx = (1/4)[0.6, 1.0, 0.2] = [0.15, 0.25, 0.05]',
+      'Scores: z = v_ctx · W₂ → softmax → probability distribution over V=7 words',
+      'Target: word "PSL" (idx 2) should have highest probability',
+      'If P(PSL|context) = 0.12: Loss = -log(0.12) = 2.12 → backprop'
+    ],
+    result: 'CBOW averages context embeddings → one prediction. Skip-gram would make 4 separate predictions from PSL. CBOW is ~4× faster here.'
+  },
+  {
+    title: 'Word Analogy: v(king) - v(man) + v(woman) = ?',
+    steps: [
+      'Given: v(king) = [0.8, 0.6, 0.2, -0.3], v(man) = [0.5, 0.4, 0.6, 0.1]',
+      'v(woman) = [0.5, 0.3, -0.2, 0.4], v(queen) = [0.7, 0.5, -0.2, 0.1]',
+      'Compute: v(king) - v(man) = [0.3, 0.2, -0.4, -0.4]',
+      'Add v(woman): [0.3+0.5, 0.2+0.3, -0.4-0.2, -0.4+0.4] = [0.8, 0.5, -0.6, 0.0]',
+      'Compare to v(queen) = [0.7, 0.5, -0.2, 0.1]',
+      'cos(result, queen) = (0.56+0.25+0.12+0) / (√(1.25) · √(0.78)) = 0.93/0.99 = 0.94',
+      'High similarity! queen is the nearest neighbor in the vocabulary.'
+    ],
+    result: 'The "gender" direction (v(woman)−v(man)) is encoded as a consistent offset. Adding it to "king" lands near "queen".'
   }
 ]);
 
 renderExercises('exercises', [
-  {q:'Skip-gram predicts ___ from ___:', options:['Center from context','Context from center','Grammar from syntax','Labels from features'], correct:1, explanation:'Skip-gram: given center word → predict surrounding context words.'},
-  {q:'CBOW predicts ___ from ___:', options:['Center from context','Context from center','Next sentence','Word frequency'], correct:0, explanation:'CBOW: given surrounding context → predict center word. Opposite of Skip-gram.'},
-  {q:'Why is negative sampling used instead of full softmax?', options:['More accurate','Vocabulary V is too large for full softmax — O(V) per update','Uses less memory','Better gradients'], correct:1, explanation:'Full softmax requires computing exp for all V words. Neg sampling only updates K+1 vectors.'},
-  {q:'If embedding dimension d=100 and vocab V=50,000, how many parameters in W₁?', options:['100','50,000','5,000,000','500,000'], correct:2, explanation:'W₁ is V×d = 50,000 × 100 = 5,000,000 parameters.'},
-  {q:'Compute: v(king)-v(man)+v(woman). If king=[1,2,3], man=[0,1,1], woman=[1,0,2], what vector do we get?', answer:'[1,2,3] - [0,1,1] + [1,0,2] = [1-0+1, 2-1+0, 3-1+2] = [2, 1, 4]. We would find the word whose embedding is closest to [2,1,4] — that should be "queen".'}
+  {q:'Skip-gram predicts ___ from ___:', options:['Center from context','Context from center','Grammar from syntax','Labels from features'], correct:1, explanation:'Skip-gram: given center word → predict surrounding context words. This is the inverse of CBOW.'},
+  {q:'CBOW predicts ___ from ___:', options:['Center from context','Context from center','Next sentence','Word frequency'], correct:0, explanation:'CBOW: given surrounding context → predict center word. Faster but less good on rare words.'},
+  {q:'Why is negative sampling used instead of full softmax?', options:['More accurate','V is too large for full softmax — O(V) per update','Uses less memory','Better gradients'], correct:1, explanation:'Full softmax: sum exp over all V words at every step. Neg sampling: O(K) with K=2-20 — up to 10,000× faster.'},
+  {q:'If d=100, V=50,000: how many total parameters (W₁ + W₂)?', options:['5,000,000','10,000,000','100,000','50,000'], correct:1, explanation:'W₁ is V×d = 5M, W₂ is d×V = 5M. Total = 10M parameters.'},
+  {q:'Compute: v(king)-v(man)+v(woman). If king=[1,2,3], man=[0,1,1], woman=[1,0,2]:', answer:'[1-0+1, 2-1+0, 3-1+2] = [2, 1, 4]. Find word whose embedding is closest (by cosine similarity) to [2,1,4].'},
+  {q:'A corpus has 10M words. Frequency of "the" is 7%. With subsampling t=10⁻⁵, what is P(discard "the")?', answer:'f("the") = 0.07. P(discard) = 1 − √(10⁻⁵/0.07) = 1 − √(0.000143) = 1 − 0.012 = 0.988. So 98.8% of "the" occurrences are discarded!'},
+  {q:'How many Skip-gram training pairs from a 10-word sentence with c=3?', answer:'Interior words (positions 3-7): 5 words × 2c = 30 pairs. Edge words: position 0: 3 pairs, pos 1: 5, pos 2: 6, pos 7: 6, pos 8: 5, pos 9: 3 pairs = 28 pairs. Total ≈ 58 pairs. General formula: approximately 2c×N − c(c+1).'},
+  {q:'What is the key limitation of Word2Vec that ELMo/BERT address?', options:['Too many parameters','Static embeddings — same vector regardless of context','Training is too slow','Requires labeled data'], correct:1, explanation:'Word2Vec: "bank" (river) and "bank" (finance) get the SAME vector. ELMo/BERT give different vectors based on context.'},
+  {q:'What does the exponent 0.75 in the noise distribution achieve?', answer:'count(w)^{0.75} is sublinear — it upweights rare words compared to their raw frequency. Without it (exponent=1), common words like "the" would dominate negative samples. With exponent=0 (uniform), ultra-rare words would be sampled too often. 0.75 is the empirical sweet spot.'},
+  {q:'Why is there no activation function in the Skip-gram hidden layer?', answer:'The hidden layer is just a lookup table: one-hot × W₁ = row selection. An activation (like ReLU) would distort the embedding and prevent the linear analogy property (king−man+woman=queen). The linearity of the hidden layer is what makes semantic arithmetic work.'},
+  {q:'With V=10,000 and K=5 negative samples, what is the speedup vs full softmax per training step?', answer:'Full softmax: compute 10,000 exponentials + normalize. Neg sampling: compute 6 sigmoids (1 positive + 5 negative). Speedup ≈ 10,000/6 ≈ 1,667×. Plus, only update 6 output vectors instead of 10,000.'}
 ]);
 
 renderChecklist('checklist', [
-  'Draw Skip-gram architecture: input → W₁ → hidden → W₂ → softmax',
-  'Draw CBOW architecture: context avg → hidden → predict center',
-  'Generate training pairs from a sentence with window size c',
-  'Explain negative sampling and why it speeds up training',
-  'Know the noise distribution: P(w) ∝ count(w)^0.75',
-  'Demonstrate word analogy arithmetic',
-  'Know parameter count: W₁ is V×d, W₂ is d×V'
+  'Draw Skip-gram architecture: input one-hot → W₁ (lookup) → d-dim hidden (no activation) → W₂ → softmax',
+  'Draw CBOW architecture: 2c context one-hots → W₁ lookup → average → W₂ → softmax → predict center',
+  'Explain why one-hot × W₁ = simple row selection (embedding lookup)',
+  'Generate all training pairs from a sentence with given window size c',
+  'Write the Skip-gram objective function and explain each term',
+  'Write the full softmax formula and explain the computational bottleneck',
+  'Derive the negative sampling loss and explain positive vs negative terms',
+  'Explain the noise distribution P(w) ∝ count^{0.75} and why 0.75',
+  'Explain subsampling of frequent words and its benefits',
+  'Perform word analogy arithmetic and nearest-neighbor lookup',
+  'Know cosine similarity formula and when to use it vs Euclidean distance',
+  'Compare Skip-gram vs CBOW (speed, rare words, training pairs)',
+  'Know parameter count: W₁ takes V×d, W₂ takes d×V, total = 2Vd',
+  'List Word2Vec limitations and how GloVe/FastText/ELMo/BERT address them'
 ], 'w7');
 </script>
 </body></html>

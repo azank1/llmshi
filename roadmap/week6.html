@@ -14,96 +14,193 @@
 <div class="lecture-page">
 <div class="breadcrumb"><a href="index.html">Home</a> / Week 6</div>
 <h1>Lecture 06 — Probabilistic Language Modeling &amp; N-grams</h1>
-<div class="meta">24 slides · Lab 6: N-gram Models</div>
+<div class="meta">24 slides · Shannon model, Markov process, n-grams, smoothing, perplexity</div>
 
 <div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Architecture &amp; Flow Diagrams</h2><div id="diagrams"></div></div>
 <div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
-<div class="lec-section"><h2>Dry Run — N-gram Probabilities</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Dry Runs — N-gram Probability Calculations</h2><div id="dryrun"></div></div>
 <div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
 <div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
 </div>
 <script src="js/lecture.js"></script>
 <script>
 renderSlides('slides', [
-  ['Predicting the Next Word','Core task: given sequence, predict what comes next — foundation of language models'],
-  ['Probability of a Word','P(w) in context — how likely is this word given what came before?'],
-  ['Probability Theory Review','Sum rule: P(A) = ΣP(A,B). Product rule: P(A,B) = P(A|B)P(B)'],
-  ['Sum Rule &amp; Product Rule','Building blocks for all probabilistic language modeling'],
-  ['Bayes\' Theorem','posterior ∝ likelihood × prior — basis for inference'],
-  ['Shannon\'s Language Model (1948)','Language as a stochastic process — probabilistic character/word generation'],
-  ['Markov Process','Future depends only on present state, not full history'],
-  ['Shannon\'s Generated Text','Zero-order: random letters. First-order: letter frequencies. Second-order: bigram frequencies'],
-  ['Shannon\'s Word Models','First-order word model produces semi-coherent text from word frequencies'],
-  ['N-grams Defined','Sequence of N consecutive words — inspired by Shannon\'s probabilistic approach'],
-  ['Types: Unigram, Bigram, Trigram','Unigrams: single words. Bigrams: word pairs. Trigrams: word triples'],
-  ['N-gram Probability','P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋ₖ₊₁...wₙ₋₁) — Markov assumption'],
-  ['Estimating Unigram Probabilities','P(w) = count(w) / total_words'],
-  ['Estimating Bigram Probabilities','P(wₙ|wₙ₋₁) = count(wₙ₋₁,wₙ) / count(wₙ₋₁)'],
-  ['Sparse Data Issues','Many valid bigrams/trigrams have zero count in training corpus'],
-  ['Smoothing','Add-one (Laplace), Add-k, Backoff, Interpolation — handle zero counts']
+  {title:'The Core Task: Predicting the Next Word', body:'Language modeling is the foundation of all modern NLP — given a sequence of words, predict what comes next.', points:['Search engines autocomplete rely on next-word prediction','Smartphone keyboards suggest words using language models','Machine translation, summarization, dialogue — all are forms of conditional generation','The key question: <strong>How do we assign probabilities to sequences of words?</strong>'], note:'This is the task that drives all of modern NLP — from n-grams to transformers.'},
+  {title:'Probability Theory Review', body:'Before building language models, we need solid probability foundations:', points:['<strong>Sum Rule:</strong> P(A) = Σ_B P(A,B) — marginalize over all possible B values','<strong>Product Rule:</strong> P(A,B) = P(A|B) · P(B) — joint probability decomposition','<strong>Conditional Probability:</strong> P(A|B) = P(A,B) / P(B) — probability of A given B is known','<strong>Bayes\' Theorem:</strong> P(A|B) = P(B|A) · P(A) / P(B) — posterior ∝ likelihood × prior','These rules are the building blocks for ALL probabilistic language models']},
+  {title:'Shannon\'s Probabilistic Language Generation (1948)', body:'Claude Shannon proposed treating language as a stochastic (probabilistic) process:', points:['<strong>Key insight:</strong> The next word/letter depends on the previous context','<strong>Markov assumption:</strong> The future depends only on the present state, not the full history','<strong>Zero-order model:</strong> Random letters with equal probability → "XFOML RXKXRJFFUJ"','<strong>First-order model:</strong> Letters based on individual frequencies → "OCRO HLI RGWR"','<strong>Second-order model:</strong> Letter pairs (bigrams) → "ON IE ANTSOUTINYS ARE T"','Higher order → increasingly natural text'], note:'Shannon\'s 1948 paper "A Mathematical Theory of Communication" is one of the most influential papers in all of science.'},
+  {title:'Shannon\'s Word-Level Models', body:'Applying the same principles to words instead of characters:', points:['<strong>First-order word model:</strong> Each word sampled based on its frequency (no context)','Result: "Representing and speedily is an good apt or come can different natural here he the a in came the to of to expert"','<strong>Second-order word model:</strong> Each word depends on the previous word','Result: "The head and in frontal attack on an english writer that the character of this point is therefore another method"','Much more coherent! Context helps dramatically, even just one word of context','This directly inspired N-gram models']},
+  {title:'N-gram Models', body:'N-gram models are a fundamental approach in NLP for probabilistic language modeling:', points:['An <strong>N-gram</strong> is a sequence of N consecutive words from a text','<strong>Unigram (N=1):</strong> Single words — "Pakistan", "won", "the", "match"','<strong>Bigram (N=2):</strong> Word pairs — "Pakistan won", "won the", "the match"','<strong>Trigram (N=3):</strong> Word triples — "Pakistan won the", "won the match"','Applications: speech recognition, spelling correction, language identification, information retrieval','<strong>Core idea:</strong> Estimate P(next word | previous words) from corpus counts'], note:'N-gram models were the dominant approach to language modeling from the 1980s until neural language models emerged around 2013.'},
+  {title:'N-gram Probability — The Markov Assumption', body:'Computing exact P(wₙ|w₁...wₙ₋₁) requires seeing the entire history — impractical! The Markov assumption saves us:', points:['<strong>Exact (Chain Rule):</strong> P(w₁...wₙ) = P(w₁) · P(w₂|w₁) · P(w₃|w₁,w₂) · ... · P(wₙ|w₁...wₙ₋₁)','<strong>Bigram approximation:</strong> P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₁) — only previous word matters','<strong>Trigram approximation:</strong> P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₂,wₙ₋₁) — previous two words','This makes computation feasible while retaining useful local context','Tradeoff: higher N = better context but sparser data (more unseen N-grams)']},
+  {title:'Maximum Likelihood Estimation (MLE)', body:'How to estimate N-gram probabilities from a corpus using frequency counts:', points:['<strong>Unigram MLE:</strong> P(w) = count(w) / total_words','<strong>Bigram MLE:</strong> P(wₙ|wₙ₋₁) = count(wₙ₋₁, wₙ) / count(wₙ₋₁)','<strong>Trigram MLE:</strong> P(wₙ|wₙ₋₂,wₙ₋₁) = count(wₙ₋₂, wₙ₋₁, wₙ) / count(wₙ₋₂, wₙ₋₁)','These are simple ratios of counts from the training corpus','<strong>Problem:</strong> What if we encounter a bigram that never appeared in training? → P = 0!'], note:'Maximum Likelihood Estimation gives the most likely parameters given the observed data, but it overfits to the training corpus.'},
+  {title:'Corpus Sensitivity &amp; Type vs Token', body:'N-gram statistics depend heavily on the corpus used for estimation:', points:['<strong>Token:</strong> Total number of words in corpus (including repeats)','<strong>Type:</strong> Number of distinct/unique words in corpus','Shakespeare vs Wall Street Journal produce very different n-gram distributions','<strong>Zipf\'s Law:</strong> A few words are very common; most words are very rare','Word forms (surface) vs lemma (root) — "ran", "running", "runs" vs "run"','Case sensitivity, punctuation handling, disfluencies all affect counts']},
+  {title:'The Sparse Data Problem', body:'The most critical issue with N-gram models — most possible N-grams are never observed:', points:['For vocabulary V=50,000: possible bigrams = V² = 2.5 billion — most will have count 0!','Possible trigrams = V³ = 125 trillion — almost all have count 0','An unseen bigram gives P=0 → entire sentence probability becomes 0','Even with huge corpora, most valid word sequences are never observed','<strong>Solution:</strong> Smoothing — redistribute probability mass from seen to unseen events']},
+  {title:'Smoothing Techniques', body:'Methods to handle zero-count N-grams by redistributing probability:', points:['<strong>Laplace (Add-1) Smoothing:</strong> Add 1 to all counts, V to denominator → no zeros','Formula: P(wₙ|wₙ₋₁) = (count(wₙ₋₁,wₙ) + 1) / (count(wₙ₋₁) + V)','<strong>Add-k Smoothing:</strong> Add fraction k instead of 1 — less aggressive','<strong>Backoff:</strong> If trigram unseen, fall back to bigram; if bigram unseen, fall back to unigram','<strong>Interpolation:</strong> Mix unigram, bigram, trigram with weights: P = λ₁P₁ + λ₂P₂ + λ₃P₃','<strong>Kneser-Ney:</strong> Most sophisticated — discounts counts and uses continuation probability'], note:'Laplace smoothing is simple but can over-smooth (gives too much mass to unseen events). Kneser-Ney is the gold standard for N-gram smoothing.'},
+  {title:'Perplexity — Evaluating Language Models', body:'How do we know if one language model is better than another? Perplexity measures "confusion" per word.', points:['<strong>Formula:</strong> PP(W) = P(w₁...wₙ)^(-1/n) = exp(-1/n · Σ log P(wᵢ|context))','Intuition: "On average, how many choices is the model uncertain between at each word?"','<strong>PP = 1:</strong> Perfect prediction — the model always knows the next word','<strong>PP = V:</strong> Complete uncertainty — randomly choosing from entire vocabulary','<strong>Lower perplexity = better model</strong>','Directly measures language modeling ability — good for comparing base LMs'], note:'Perplexity is the standard metric for base language models. GPT-2 achieves PP ≈ 20; strong modern models achieve PP < 10.'}
+]);
+
+renderDiagrams('diagrams', [
+  {
+    title: 'Language Model: Predicting the Next Word',
+    type: 'flow',
+    steps: ['w₁', 'w₂', '...', 'wₙ₋₁', 'Language Model', 'P(wₙ | w₁...wₙ₋₁)', 'Next Word'],
+    caption: 'Given a sequence of previous words, the language model outputs a probability distribution over the vocabulary for the next word.'
+  },
+  {
+    title: 'N-gram Hierarchy',
+    type: 'table',
+    headers: ['N', 'Name', 'Context', 'Example from "Pakistan won the match"', 'Count'],
+    rows: [
+      ['1', 'Unigram', 'None', '"Pakistan", "won", "the", "match"', '4'],
+      ['2', 'Bigram', '1 word', '"Pakistan won", "won the", "the match"', '3'],
+      ['3', 'Trigram', '2 words', '"Pakistan won the", "won the match"', '2'],
+      ['4', '4-gram', '3 words', '"Pakistan won the match"', '1']
+    ],
+    caption: 'As N increases, context improves but data becomes sparser — most possible N-grams are never observed.'
+  },
+  {
+    title: 'Markov Chain (Bigram) Visualization',
+    type: 'flow',
+    steps: ['&lt;s&gt;', 'I', 'am', 'Sam', '&lt;/s&gt;'],
+    caption: 'In a bigram model, each word depends only on the previous word. The transition probability is estimated from corpus counts.'
+  },
+  {
+    title: 'Shannon\'s Language Generation — Quality vs Order',
+    type: 'table',
+    headers: ['Order', 'Context', 'Sample Output', 'Quality'],
+    rows: [
+      ['0', 'None (random)', 'XFOML RXKXRJFFUJ ZLPWCFWKCYJ', 'Nonsense'],
+      ['1', 'Letter freq', 'OCRO HLI RGWR NWIELWIS EU LL', 'Slightly better'],
+      ['2', 'Bigram chars', 'ON IE ANTSOUTINYS ARE T INCTORE', 'Some words emerge'],
+      ['Word-1', 'Word freq', 'Representing and speedily is an good apt or come', 'Words OK, no sense'],
+      ['Word-2', 'Prev word', 'The head and in frontal attack on an english writer', 'Much more coherent']
+    ],
+    caption: 'More context → more natural text. This progression motivates the development of N-gram and eventually neural language models.'
+  },
+  {
+    title: 'Smoothing Methods Comparison',
+    type: 'compare',
+    left: {heading:'Simple Smoothing', points:['Add-1 (Laplace): add 1 to all counts','Add-k: add fraction k instead','Simple and easy to implement','Can over-smooth (too much mass to unseen)','Uniform redistribution — not intelligent']},
+    right: {heading:'Advanced Smoothing', points:['Backoff: fall to lower N if unseen','Interpolation: weighted mix of all N','Kneser-Ney: discounting + continuation prob','More complex but much better performance','Intelligently redistributes probability mass']}
+  },
+  {
+    title: 'Perplexity Interpretation Scale',
+    type: 'table',
+    headers: ['Perplexity', 'Meaning', 'Model Quality'],
+    rows: [
+      ['1', 'Perfect prediction', 'Theoretical ideal — never achievable on real text'],
+      ['10-20', 'Strong model', 'State-of-the-art neural LMs on English benchmarks'],
+      ['50-100', 'Decent model', 'Good N-gram models or small neural LMs'],
+      ['200-500', 'Weak model', 'Simple unigram or poorly trained model'],
+      ['V (vocab size)', 'Random guessing', 'Model has learned nothing — uniform distribution']
+    ]
+  }
 ]);
 
 renderMath('math', [
-  {name:'Chain Rule of Probability', formula:'P(w₁,w₂,...,wₙ) = P(w₁)·P(w₂|w₁)·P(w₃|w₁,w₂)·...·P(wₙ|w₁...wₙ₋₁)', desc:'Exact decomposition — impractical for long sequences'},
-  {name:'Markov Assumption (Bigram)', formula:'P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₁)', desc:'Only previous word matters — makes computation feasible'},
-  {name:'Bigram MLE', formula:'P(wₙ|wₙ₋₁) = count(wₙ₋₁, wₙ) / count(wₙ₋₁)', desc:'Maximum likelihood estimate from corpus counts'},
-  {name:'Trigram MLE', formula:'P(wₙ|wₙ₋₂,wₙ₋₁) = count(wₙ₋₂,wₙ₋₁,wₙ) / count(wₙ₋₂,wₙ₋₁)', desc:'Previous two words — better context, sparser counts'},
-  {name:'Laplace Smoothing', formula:'P(wₙ|wₙ₋₁) = (count(wₙ₋₁,wₙ) + 1) / (count(wₙ₋₁) + V)', desc:'Add 1 to all counts, V to denominator — no zero probabilities'},
-  {name:'Perplexity', formula:'PP(W) = P(w₁...wₙ)^(-1/n) = exp(-1/n · Σ log P(wᵢ|context))', desc:'Lower = better model. Intuition: average branching factor'},
-  {name:'Bayes\' Theorem', formula:'P(A|B) = P(B|A) · P(A) / P(B)', desc:'Update belief about A given evidence B'}
+  {name:'Chain Rule of Probability', formula:'P(w₁,w₂,...,wₙ) = P(w₁) · P(w₂|w₁) · P(w₃|w₁,w₂) · ... · P(wₙ|w₁...wₙ₋₁)', desc:'Exact decomposition of joint probability — impractical for long sequences (exponential context).'},
+  {name:'Markov Assumption (Bigram)', formula:'P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₁)', desc:'Only the immediately previous word matters — makes computation feasible.'},
+  {name:'Markov Assumption (Trigram)', formula:'P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₂, wₙ₋₁)', desc:'Previous two words — better context but sparser counts.'},
+  {name:'Bigram MLE', formula:'P(wₙ|wₙ₋₁) = count(wₙ₋₁, wₙ) / count(wₙ₋₁)', desc:'Maximum Likelihood Estimate: ratio of bigram count to unigram count. Simple and intuitive.'},
+  {name:'Trigram MLE', formula:'P(wₙ|wₙ₋₂,wₙ₋₁) = count(wₙ₋₂,wₙ₋₁,wₙ) / count(wₙ₋₂,wₙ₋₁)', desc:'Ratio of trigram to bigram counts. Better context but many more zero counts.'},
+  {name:'Laplace Smoothing', formula:'P(wₙ|wₙ₋₁) = (count(wₙ₋₁,wₙ) + 1) / (count(wₙ₋₁) + V)', desc:'Add 1 to numerator, V (vocab size) to denominator. No zero probabilities. Every bigram gets at least 1/(count+V).'},
+  {name:'Add-k Smoothing', formula:'P(wₙ|wₙ₋₁) = (count(wₙ₋₁,wₙ) + k) / (count(wₙ₋₁) + k·V)', desc:'Generalization of Laplace with tunable k < 1. Less aggressive smoothing.'},
+  {name:'Linear Interpolation', formula:'P(wₙ|wₙ₋₂,wₙ₋₁) = λ₃·P₃(wₙ|wₙ₋₂,wₙ₋₁) + λ₂·P₂(wₙ|wₙ₋₁) + λ₁·P₁(wₙ)', desc:'Mix trigram, bigram, unigram with weights λ₃+λ₂+λ₁=1. Tune λs on held-out data.'},
+  {name:'Bayes\' Theorem', formula:'P(A|B) = P(B|A) · P(A) / P(B)', desc:'Update belief about A given evidence B. posterior ∝ likelihood × prior.'},
+  {name:'Perplexity', formula:'PP(W) = exp(−1/N · Σᵢ log P(wᵢ|context))', desc:'Exponentiated average negative log-likelihood. Lower = better. PP=1 is perfect; PP=V is random.'}
 ]);
 
 renderDryRun('dryrun', [
   {
-    title: 'Bigram Probabilities from corpus: "I am Sam. Sam I am. I do not like green eggs and ham."',
+    title: 'Bigram Probabilities: "I am Sam. Sam I am. I do not like green eggs and ham."',
     steps: [
-      'Count bigrams: (I,am)=2, (am,Sam)=1, (Sam,I)=1, (I,do)=1, (do,not)=1, ...',
-      'Count unigrams: I=3, am=2, Sam=2, do=1, not=1, ...',
-      'P(am|I) = count(I,am)/count(I) = 2/3 = 0.667',
-      'P(Sam|am) = count(am,Sam)/count(am) = 1/2 = 0.5',
-      'P(do|I) = count(I,do)/count(I) = 1/3 = 0.333'
+      'Tokenize with boundaries: <s> I am Sam </s> <s> Sam I am </s> <s> I do not like green eggs and ham </s>',
+      'Count unigrams: I=3, am=2, Sam=2, do=1, not=1, like=1, green=1, eggs=1, and=1, ham=1',
+      'Count bigrams: (I,am)=2, (I,do)=1, (am,Sam)=1, (am,</s>)=1, (Sam,I)=1, (Sam,</s>)=1, (do,not)=1, ...',
+      'P(am|I) = count(I,am) / count(I) = 2/3 = 0.667',
+      'P(do|I) = count(I,do) / count(I) = 1/3 = 0.333',
+      'P(Sam|am) = count(am,Sam) / count(am) = 1/2 = 0.500',
+      'P(</s>|am) = count(am,</s>) / count(am) = 1/2 = 0.500'
     ],
-    result: 'Given "I", model predicts "am" (67%) over "do" (33%). Bigram captures local patterns.'
+    result: 'Given "I", model predicts "am" (67%) over "do" (33%). Given "am", equal chance of "Sam" or end-of-sentence.'
   },
   {
     title: 'Laplace Smoothing: P("like"|"not") with V=12',
     steps: [
-      'Without smoothing: count("not","like")=1, count("not")=1 → P=1/1=1.0',
-      'Problem: model is 100% certain — overconfident!',
-      'With Laplace: P = (1+1)/(1+12) = 2/13 = 0.154',
-      'Now unseen bigrams get: P = (0+1)/(1+12) = 1/13 = 0.077',
-      'All bigrams starting with "not" sum to 1.0 ✓'
+      'Without smoothing: count("not","like")=1, count("not")=1 → P = 1/1 = 1.0',
+      'Problem: model is 100% certain "like" always follows "not" — clearly overconfident!',
+      'With Laplace (add-1): P = (count+1)/(count+V) = (1+1)/(1+12) = 2/13 = 0.154',
+      'Unseen bigram "not pizza": P = (0+1)/(1+12) = 1/13 = 0.077',
+      'Check: Σ P(w|"not") for all V words = V × (distributed) = 13/13 = 1.0 ✓',
+      'Smoothing reduced P("like"|"not") from 1.0 to 0.154 — much more reasonable!'
     ],
-    result: 'Smoothing redistributes probability mass from seen to unseen events.'
+    result: 'Laplace smoothing redistributes probability mass from overconfident seen events to never-seen events. All bigrams now have non-zero probability.'
   },
   {
-    title: 'Perplexity: Evaluate bigram model on test "I am Sam"',
+    title: 'Perplexity Calculation: bigram model on "I am Sam"',
     steps: [
-      'P(I|&lt;s&gt;) = 0.5 (assume), P(am|I) = 0.667, P(Sam|am) = 0.5',
-      'P(sentence) = 0.5 × 0.667 × 0.5 = 0.167',
-      'log P = log(0.5) + log(0.667) + log(0.5) = -0.301 + (-0.176) + (-0.301) = -0.778',
-      'PP = P^(-1/3) = 0.167^(-1/3) = (1/0.167)^(1/3) = 5.99^(1/3) ≈ 1.82'
+      'Need: P(<s>,I), P(I,am), P(am,Sam), P(Sam,</s>)',
+      'From our corpus: P(I|<s>) ≈ 0.5, P(am|I) = 0.667, P(Sam|am) = 0.5, P(</s>|Sam) = 0.5',
+      'log P(sentence) = log(0.5) + log(0.667) + log(0.5) + log(0.5)',
+      '= -0.693 + (-0.405) + (-0.693) + (-0.693) = -2.484',
+      'Average: -2.484 / 4 = -0.621',
+      'Perplexity = exp(0.621) = 1.861'
     ],
-    result: 'Perplexity ≈ 1.82. Lower = better. A random model over V=12 words would give PP=12.'
+    result: 'PP ≈ 1.86. The model is "confused" between ~2 words on average. Compare: random over V=12 gives PP=12. Our model is 6.5× better than random.'
+  },
+  {
+    title: 'Sparse Data Problem: V=50,000 vocabulary',
+    steps: [
+      'Possible unigrams: 50,000',
+      'Possible bigrams: 50,000² = 2,500,000,000 (2.5 billion)',
+      'Possible trigrams: 50,000³ = 125,000,000,000,000 (125 trillion)',
+      'A corpus of 1 billion words might contain ~500M unique bigrams',
+      'That means ~2 billion bigrams (80%) have count = 0!',
+      'For trigrams: ~99.99% have count = 0',
+      'Without smoothing: any sentence with an unseen bigram gets P = 0'
+    ],
+    result: 'The sparse data problem is severe and worsens exponentially with N. Smoothing is essential for any practical N-gram model.'
+  },
+  {
+    title: 'Linear Interpolation: combine unigram, bigram, trigram',
+    steps: [
+      'P₃(Sam|am,I) = 0 (trigram "I am Sam" never seen in some partition)',
+      'P₂(Sam|am) = 0.5 (bigram estimate)',
+      'P₁(Sam) = 2/12 = 0.167 (unigram estimate)',
+      'Weights: λ₃=0.5, λ₂=0.3, λ₁=0.2',
+      'P_interp = 0.5×0 + 0.3×0.5 + 0.2×0.167 = 0 + 0.15 + 0.033 = 0.183',
+      'Even though trigram count is 0, interpolation gives reasonable P = 0.183'
+    ],
+    result: 'Interpolation rescues us from zero trigram counts by mixing in information from lower-order models.'
   }
 ]);
 
 renderExercises('exercises', [
-  {q:'The Markov assumption for bigrams states:', options:['All words are independent','Next word depends only on previous word','Next word depends on all previous words','Words have fixed probabilities'], correct:1, explanation:'Bigram Markov: P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₁)'},
-  {q:'Why is Laplace smoothing needed?', options:['To speed up training','To handle unseen n-grams that have zero probability','To reduce vocabulary','To improve grammar'], correct:1, explanation:'Without smoothing, any unseen bigram gives P=0, making entire sentence probability 0.'},
-  {q:'Perplexity of a perfect model that always predicts correctly would be:', options:['0','1','Infinity','Vocabulary size'], correct:1, explanation:'Perfect prediction: P=1 at each step, PP = 1^(-1/n) = 1.'},
-  {q:'Compute: P("won"|"team") from corpus "team won match team lost game team won cup"', answer:'count("team","won") = 2, count("team") = 3. P("won"|"team") = 2/3 ≈ 0.667'},
-  {q:'With Laplace smoothing (V=6), recompute P("won"|"team")', answer:'P = (2+1)/(3+6) = 3/9 = 0.333. Smoothing reduced from 0.667 to 0.333 — mass redistributed to unseen bigrams.'}
+  {q:'The Markov assumption for bigrams states:', options:['All words are independent','Next word depends only on the previous word','Next word depends on all previous words','Words have fixed probabilities'], correct:1, explanation:'Bigram Markov: P(wₙ|w₁...wₙ₋₁) ≈ P(wₙ|wₙ₋₁). Only the immediately preceding word matters.'},
+  {q:'Why is Laplace smoothing needed?', options:['To speed up training','To handle unseen n-grams that have zero probability','To reduce vocabulary','To improve grammar'], correct:1, explanation:'Without smoothing, any unseen bigram gives P=0, making the entire sentence probability 0.'},
+  {q:'Perplexity of a perfect model would be:', options:['0','1','10','Vocabulary size'], correct:1, explanation:'Perfect prediction: P=1 at each step, PP = exp(-log(1)) = exp(0) = 1.'},
+  {q:'Compute P("won"|"team") from: "team won match team lost game team won cup"', answer:'count("team","won") = 2, count("team") = 3. P("won"|"team") = 2/3 ≈ 0.667.'},
+  {q:'With Laplace smoothing (V=6), recompute P("won"|"team")', answer:'P = (2+1)/(3+6) = 3/9 = 0.333. Smoothing reduced from 0.667 to 0.333 — probability mass redistributed to unseen bigrams like ("team","pizza").'},
+  {q:'How many possible trigrams for V=1000?', options:['1,000','1,000,000','1,000,000,000','3,000'], correct:2, explanation:'V³ = 1000³ = 1,000,000,000 (1 billion). Most will have count 0 in any realistic corpus.'},
+  {q:'What is the perplexity of a model that uniformly guesses over V=10,000 words?', answer:'If P(w) = 1/V for all words: PP = exp(-log(1/V)) = exp(log(V)) = V = 10,000. A random model over 10K words has perplexity 10,000.'},
+  {q:'Explain why higher-order N-grams (larger N) face worse sparsity', answer:'Possible N-grams grow as V^N: unigrams=V, bigrams=V², trigrams=V³. For V=50K: bigrams=2.5B, trigrams=125T. Corpus size stays fixed, so the fraction of seen N-grams drops exponentially with N.'},
+  {q:'In linear interpolation with λ₃=0.6, λ₂=0.3, λ₁=0.1, what must be true?', options:['λ₃ > λ₂ > λ₁','λ₁ + λ₂ + λ₃ = 1','All λ > 0','All of the above'], correct:3, explanation:'All conditions hold: weights must be positive and sum to 1 so the result is a valid probability distribution. Typically λ for higher-order is larger.'},
+  {q:'Shannon showed that zero-order character models produce gibberish while second-order models produce near-words. Why?', answer:'Zero-order: random letters with equal probability — no language structure. Second-order: each letter depends on the previous letter, capturing common letter pairs (bigrams) like "th", "er", "in". These common pairs are the building blocks of real words, so output looks more word-like.'}
 ]);
 
 renderChecklist('checklist', [
-  'State the chain rule of probability for sentences',
-  'Explain the Markov assumption and why it\'s needed',
-  'Calculate bigram probabilities from a corpus by hand',
-  'Apply Laplace smoothing and explain what happens',
-  'Compute perplexity and interpret the result',
-  'Know Shannon\'s language generation model',
-  'Understand the sparse data problem in n-grams'
+  'State the chain rule of probability for sentence probability decomposition',
+  'Explain the Markov assumption and why it makes language modeling feasible',
+  'Define unigram, bigram, trigram with examples from a sample sentence',
+  'Calculate bigram probabilities from a corpus by hand (MLE)',
+  'Calculate trigram probabilities from a corpus by hand',
+  'Apply Laplace smoothing and show how it redistributes probability',
+  'Explain Add-k smoothing and how it differs from Laplace',
+  'Describe Backoff and Interpolation smoothing strategies',
+  'Compute perplexity and interpret the result (know the scale: 1 = perfect, V = random)',
+  'Explain Shannon\'s language generation model and how text quality improves with order',
+  'Understand the sparse data problem: V^N possible N-grams',
+  'Know corpus sensitivity: Shakespeare vs WSJ give different distributions'
 ], 'w6');
 </script>
 </body></html>
