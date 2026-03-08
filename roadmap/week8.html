@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Week 8 — Evaluating Language Models</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div class="topbar">
+  <div class="logo">CS-416 <span>Large Language Models</span></div>
+  <nav><a href="index.html">Home</a></nav>
+</div>
+<div class="week-progress-strip">
+  <div class="bar"><div class="fill" id="weekProgressFill" style="width:0%"></div></div>
+  <span id="weekProgressLabel">0%</span>
+</div>
+<div class="lecture-page">
+<div class="breadcrumb"><a href="index.html">Home</a> / Week 8</div>
+<h1>Lecture 08 — Evaluating Language Models</h1>
+<div class="meta">33 slides · Lab 5: Evaluation tasks</div>
+
+<div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
+<div class="lec-section"><h2>Dry Run — Metrics Calculation</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
+<div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
+</div>
+<script src="js/lecture.js"></script>
+<script>
+renderSlides('slides', [
+  {title:'Evaluating ML Models — Confusion Matrix', body:'Before evaluating LLMs, we must understand classical ML evaluation. Everything starts with the confusion matrix.', points:['A <strong>confusion matrix</strong> is a 2×2 table (for binary classification) showing all possible outcomes','<strong>TP</strong> (True Positive): correctly predicted positive','<strong>FP</strong> (False Positive): incorrectly predicted positive (Type I error)','<strong>FN</strong> (False Negative): missed positive (Type II error)','<strong>TN</strong> (True Negative): correctly predicted negative','ALL evaluation metrics derive from these four numbers']},
+  {title:'Precision, Recall, and F1-Score', body:'The three most important derived metrics — each answers a different question:', points:['<strong>Accuracy</strong> = (TP+TN)/(TP+TN+FP+FN) — overall correctness (misleading for imbalanced data!)','<strong>Precision</strong> = TP/(TP+FP) — "Of all I predicted positive, how many truly are?"','<strong>Recall</strong> = TP/(TP+FN) — "Of all actual positives, how many did I catch?"','<strong>F1-Score</strong> = 2·(P·R)/(P+R) — harmonic mean, balances precision and recall'], note:'Precision and recall have an inherent trade-off. F1 = 1 means perfect precision AND recall.'},
+  {title:'LLM Evaluation Aspects Before Deployment', body:'LLMs require evaluation on dimensions beyond traditional accuracy:', points:['<strong>Answer Relevancy:</strong> Is the output informative and concise for the input?','<strong>Task Completion:</strong> Did the agent actually finish the task?','<strong>Correctness:</strong> Is the output factually correct (checked against ground truth)?','<strong>Hallucination:</strong> Does the output contain made-up information?','<strong>Tool Correctness:</strong> Did the agent call the right tools?','<strong>Contextual Relevancy:</strong> Did the RAG retriever pull the right context?','<strong>Responsible Metrics:</strong> Bias, toxicity, harmful content detection']},
+  {title:'LLM Evaluation Stages', body:'Evaluation happens at multiple points in the LLM lifecycle:', points:['<strong>Pre-training:</strong> Perplexity on held-out data — is the model learning language?','<strong>Fine-tuning:</strong> Task-specific metrics (F1, BLEU, ROUGE) on validation set','<strong>Deployment:</strong> Real-world metrics, human evaluation, A/B testing','<strong>Ongoing monitoring:</strong> Drift detection, safety audits, user feedback']},
+  {title:'Perplexity — Pre-training Evaluation', body:'The core metric for evaluating base language models. Also called "rolling log-likelihood".', points:['<strong>Formula:</strong> PP(W) = exp(−1/N · Σᵢ log P(wᵢ|w₁…wᵢ₋₁))','Intuition: "On average, how confused is the model at each word?"','PP = 1 means perfect prediction (no uncertainty)','PP = |V| means completely random (uniform over vocabulary)','Lower perplexity = better language model','<strong>Limitation:</strong> Not useful for instruction-tuned models — measures raw prediction, not helpfulness'], note:'GPT-2 had perplexity ~20 on standard benchmarks. Strong models achieve PP < 10.'},
+  {title:'ROUGE — Summarization Evaluation', body:'Recall-Oriented Understudy for Gisting Evaluation. Standard metric for text summarization.', points:['<strong>ROUGE-1:</strong> Unigram overlap between system and reference','<strong>ROUGE-2:</strong> Bigram overlap (captures some word-order info)','<strong>ROUGE-L:</strong> Longest Common Subsequence (captures sentence-level structure)','ROUGE is <strong>recall-oriented</strong>: "What fraction of reference content did we capture?"','Higher ROUGE = generated text covers more of the reference'], note:'ROUGE has serious limitations: ignores paraphrasing, sensitive to length, can be gamed, and does not measure factual accuracy or coherence.'},
+  {title:'BLEU — Translation Evaluation', body:'Bilingual Evaluation Understudy. Standard metric for machine translation.', points:['<strong>Precision-based:</strong> "What fraction of generated n-grams appear in reference?"','Uses <strong>modified n-gram precision</strong> with clipping to prevent gaming by repetition','<strong>Brevity Penalty (BP):</strong> penalizes translations shorter than reference','Formula: BLEU = BP · exp(Σₙ wₙ · log pₙ) where pₙ = modified n-gram precision','Typically computed as BLEU-4 (geometric mean of p₁ through p₄)'], note:'BLEU is precision-oriented (the opposite of ROUGE). It penalizes legitimate paraphrases and has low human correlation at the sentence level.'},
+  {title:'METEOR — A Better Translation Metric', body:'Metric for Evaluation of Translation with Explicit Ordering. Addresses BLEU\'s weaknesses.', points:['Goes beyond exact string matching with <strong>stemming</strong> and <strong>synonym lookup</strong>','Computes alignment between candidate and reference using exact → stem → synonym matching','Includes word-order penalty (fragmentation penalty for scattered matches)','Harmonic mean of precision and recall with higher weight on recall'], note:'METEOR correlates better with human judgment than BLEU but is language-dependent and computationally more expensive.'},
+  {title:'BERTScore — Semantic Evaluation', body:'Uses contextual embeddings from pretrained transformers (BERT) for evaluation.', points:['Encodes both candidate and reference with BERT → contextual embeddings','Aligns tokens based on <strong>cosine similarity</strong> in embedding space','Computes greedy matching: each candidate token → best reference match','<strong>Captures semantic similarity</strong> rather than just surface n-gram overlap','Robust to synonyms, paraphrases, and word reordering','Works across languages with multilingual models'], note:'BERTScore is computationally expensive (requires BERT inference) and may overestimate quality for verbose/redundant outputs. Still requires a reference.'},
+  {title:'Code Generation — pass@k and cons@k', body:'Special metrics for evaluating code-generating LLMs:', points:['<strong>pass@1:</strong> probability that a single generated sample passes all test cases','<strong>pass@k:</strong> probability that at least one of k samples passes — measures model diversity','Formula: pass@k = 1 − C(n−c, k)/C(n, k) where n=total, c=correct','<strong>cons@16:</strong> consistency at 16 — generate 16 samples, majority-vote for answer','cons@k measures <strong>robustness</strong>: requires consistent correctness, not a lucky hit'], note:'pass@k rewards diversity; cons@k rewards consistency. They measure very different things.'},
+  {title:'LLM as a Judge', body:'Using one LLM to evaluate another — a scalable alternative to expensive human evaluation.', points:['Human ratings are expensive, slow, and don\'t scale','Can the evaluating LLM be trusted? Typically use a larger/stronger model','<strong>Pros:</strong> automated, flexible, can handle complex criteria, interpretable','<strong>Cons:</strong> expensive (API costs), not 100% reliable, requires verification','Workflow: design grading template → generate training set → verify with humans → iterate','Judge model is typically more complex than the evaluated model'], note:'Key insight: LLM-as-judge can run on LIVE traffic — no need for reference texts.'},
+  {title:'G-Eval — LLM-as-a-Judge Framework', body:'G-Eval uses GPT-4 style Chain-of-Thought prompts for structured evaluation scoring.', points:['Task-agnostic and customizable: relevance, coherence, factuality, tone, safety','Closer alignment with human assessments than lexical metrics','Process: Read output → Compare with reference (if any) → Score on rubric','Scores can be on multiple dimensions: fluency, coherence, relevance, factual accuracy','Can provide <strong>textual justifications</strong> for scores (interpretability)','Works across languages and domains without re-engineering'], note:'G-Eval requires careful prompt engineering. The judge LLM may introduce its own biases.'}
+]);
+
+renderMath('math', [
+  {name:'Accuracy', formula:'Accuracy = (TP + TN) / (TP + TN + FP + FN)', desc:'Overall correctness. Misleading for imbalanced classes.'},
+  {name:'Precision', formula:'Precision = TP / (TP + FP)', desc:'Of all predicted positives, how many are actually positive?'},
+  {name:'Recall', formula:'Recall = TP / (TP + FN)', desc:'Of all actual positives, how many did we find?'},
+  {name:'F1 Score', formula:'F1 = 2 · (P · R) / (P + R)', desc:'Harmonic mean of Precision and Recall'},
+  {name:'Perplexity', formula:'PP(W) = exp(−1/N · Σᵢ log P(wᵢ|w₁...wᵢ₋₁))', desc:'Exponentiated average negative log-likelihood. Lower = better.'},
+  {name:'ROUGE-N', formula:'ROUGE-N = Σ count_match(n-gram) / Σ count(n-gram in reference)', desc:'Recall: what fraction of reference n-grams appear in generated text?'},
+  {name:'BLEU', formula:'BLEU = BP · exp(Σₙ wₙ · log pₙ)', desc:'pₙ = modified n-gram precision. BP = brevity penalty for short outputs.'},
+  {name:'Brevity Penalty', formula:'BP = exp(1 − r/c) if c < r else 1', desc:'Penalize generated text shorter than reference. r=ref length, c=candidate length.'},
+  {name:'BERTScore', formula:'P = 1/|ĉ| Σ max cos(ĉᵢ, rⱼ);  R = 1/|r| Σ max cos(rⱼ, ĉᵢ)', desc:'Greedy matching of contextual embeddings between candidate and reference'},
+  {name:'pass@k', formula:'pass@k = 1 − C(n−c, k) / C(n, k)', desc:'n=total samples, c=correct samples. Estimates chance at least 1 of k is correct.'}
+]);
+
+renderDryRun('dryrun', [
+  {
+    title: 'Confusion Matrix: Spam Classifier (100 emails, 30 spam, 70 not-spam)',
+    steps: [
+      'Model predicts: 25 spam, 75 not-spam',
+      'TP=22 (correctly found spam), FP=3 (ham marked spam)',
+      'FN=8 (missed spam), TN=67 (correctly found ham)',
+      'Precision = 22/(22+3) = 22/25 = 0.880',
+      'Recall = 22/(22+8) = 22/30 = 0.733',
+      'F1 = 2×(0.88×0.733)/(0.88+0.733) = 1.290/1.613 = 0.800',
+      'Accuracy = (22+67)/100 = 0.890'
+    ],
+    result: 'High accuracy (89%) but recall only 73% — 8 spam emails leaked through!'
+  },
+  {
+    title: 'ROUGE-1: Ref="the cat sat on the mat", Gen="the cat on mat"',
+    steps: [
+      'Reference unigrams: {the:2, cat:1, sat:1, on:1, mat:1} = 6 tokens',
+      'Generated unigrams: {the:1, cat:1, on:1, mat:1} = 4 tokens',
+      'Matching unigrams: the(1), cat(1), on(1), mat(1) = 4 matches',
+      'ROUGE-1 Recall = 4/6 = 0.667',
+      'ROUGE-1 Precision = 4/4 = 1.000',
+      'ROUGE-1 F1 = 2×(1.0×0.667)/(1.0+0.667) = 0.800'
+    ],
+    result: 'ROUGE-1 F1 = 0.80. Missed "sat" and one "the". Precision is perfect (all gen words are relevant).'
+  },
+  {
+    title: 'BLEU: Ref="the cat is on the mat", Gen="the the the the"',
+    steps: [
+      'Unigram precision: "the" appears 2× in ref, 4× in gen → clipped count=2',
+      'Modified p₁ = 2/4 = 0.5',
+      'Bigram: "the the" never appears in ref → p₂ = 0/3 = 0',
+      'BLEU would be very low due to repetition',
+      'This shows BLEU catches degenerate repetitive outputs!'
+    ],
+    result: 'BLEU correctly penalizes repetitive text via modified n-gram precision (clipping).'
+  }
+]);
+
+renderExercises('exercises', [
+  {q:'ROUGE is primarily a ___ metric while BLEU is primarily a ___ metric:', options:['Precision / Recall','Recall / Precision','Speed / Accuracy','Training / Testing'], correct:1, explanation:'ROUGE measures recall (coverage of reference). BLEU measures precision (quality of output).'},
+  {q:'Why is accuracy misleading for imbalanced datasets?', options:['It is too complex','A model predicting majority class gets high accuracy','It requires GPU','It only works for binary'], correct:1, explanation:'With 95% negative class, always predicting negative gives 95% accuracy but 0% recall on positives.'},
+  {q:'BERTScore advantage over BLEU:', options:['Cheaper to compute','Handles synonyms and paraphrases via contextual embeddings','Uses more n-grams','Requires no reference'], correct:1, explanation:'BLEU requires exact n-gram match. BERTScore uses semantic similarity via BERT embeddings.'},
+  {q:'Given TP=10, FP=5, FN=2, TN=83: Compute Precision, Recall, F1', answer:'Precision = 10/(10+5) = 0.667. Recall = 10/(10+2) = 0.833. F1 = 2×(0.667×0.833)/(0.667+0.833) = 1.111/1.500 = 0.741'},
+  {q:'A model has perplexity 50 on English text. What does this mean?', answer:'On average, the model is "confused" among 50 equally likely next words at each position. A perfect model would have PP=1. A random model over 50,000 vocab would have PP=50,000. PP=50 is reasonable for a decent language model.'}
+]);
+
+renderChecklist('checklist', [
+  'Compute precision, recall, F1, accuracy from a confusion matrix',
+  'Calculate ROUGE-1 and ROUGE-2 by hand',
+  'Calculate BLEU with brevity penalty',
+  'Explain perplexity and its limitations for instruction-tuned models',
+  'Compare BLEU vs ROUGE vs METEOR vs BERTScore',
+  'Understand LLM-as-Judge and G-Eval approaches',
+  'Know pass@k metric for code generation'
+], 'w8');
+</script>
+</body></html>

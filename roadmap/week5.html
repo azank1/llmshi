@@ -1,0 +1,115 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Week 5 — NLP Fundamentals</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div class="topbar">
+  <div class="logo">CS-416 <span>Large Language Models</span></div>
+  <nav><a href="index.html">Home</a></nav>
+</div>
+<div class="week-progress-strip">
+  <div class="bar"><div class="fill" id="weekProgressFill" style="width:0%"></div></div>
+  <span id="weekProgressLabel">0%</span>
+</div>
+<div class="lecture-page">
+<div class="breadcrumb"><a href="index.html">Home</a> / Week 5</div>
+<h1>Lecture 05 — NLP Fundamentals</h1>
+<div class="meta">30 slides · Text preprocessing, feature extraction, word representations</div>
+
+<div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
+<div class="lec-section"><h2>Dry Run — Text Preprocessing Pipeline</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
+<div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
+</div>
+<script src="js/lecture.js"></script>
+<script>
+renderSlides('slides', [
+  ['What is NLP?','Branch of AI that receives human language, processes it to understand meaning, generates appropriate responses'],
+  ['Language as Knowledge','Language preserves and propagates knowledge across time and space'],
+  ['NLP Applications','Translation, summarization, sentiment analysis, chatbots, search, QA'],
+  ['Text Preprocessing Pipeline','Raw text → Clean → Normalize → Stop words → Lemmatize → Feature extract'],
+  ['Cleaning','Remove HTML tags, symbols, non-alphabetic chars, excessive punctuation, extra spaces'],
+  ['Normalization','Convert to lowercase: "The Pakistan Cricket Team" → "the pakistan cricket team"'],
+  ['Stop Words Removal','Remove common words: a, an, the, is, etc. Focus on content words'],
+  ['Lemmatization','Convert to root: "won"→"win", "led"→"lead", "thrilling"→"thrilling"'],
+  ['POS Tagging','Assign grammatical roles: noun, verb, adjective, adverb to each token'],
+  ['Named Entity Recognition (NER)','Identify: person names, organizations, locations, dates, numerical values'],
+  ['Denotation vs Connotation','Denotation = literal meaning. Connotation = associated feelings/implied meaning'],
+  ['WordNet','Online lexical database — synonyms organized into synsets with semantic relations'],
+  ['SentiWordNet','WordNet + sentiment scores (positive/negative/objective) for opinion mining'],
+  ['WordNet Limitations','Missing new meanings: "wicked" (bad → cool), "wizard" (magic → expert)'],
+  ['Feature Extraction','How to convert text to numbers for neural networks?'],
+  ['Random Encoding','Assign arbitrary numbers — "I"=1, "live"=2. Problem: implies ordering'],
+  ['ASCII/Unicode','Character-level numbers — individual chars don\'t carry word meaning'],
+  ['One-Hot Encoding','Vector length = vocabulary size. Each word = one 1, rest 0s. Sparse!']
+]);
+
+renderMath('math', [
+  {name:'One-Hot Vector', formula:'v(word_i) = [0, 0, ..., 1, ..., 0]  (1 at position i, V-dimensional)', desc:'Sparse representation — V can be 100,000+. No similarity between words.'},
+  {name:'One-Hot Orthogonality', formula:'cos(v(cat), v(dog)) = 0', desc:'All word pairs have zero similarity — major limitation'},
+  {name:'Vocabulary Size Problem', formula:'V = |unique words|, each vector is V-dimensional', desc:'If V=50,000, every word needs a 50,000-dim vector. Extremely wasteful.'},
+  {name:'Bag of Words', formula:'BoW(doc) = [count(w₁), count(w₂), ..., count(wᵥ)]', desc:'Document as word frequency vector — ignores word order'},
+  {name:'TF (Term Frequency)', formula:'tf(t,d) = count(t in d) / |d|', desc:'How often term t appears in document d, normalized by doc length'},
+  {name:'IDF (Inverse Doc Frequency)', formula:'idf(t) = log(N / df(t))', desc:'Rare words get high weight, common words get low weight. N = total docs.'},
+  {name:'TF-IDF', formula:'tfidf(t,d) = tf(t,d) × idf(t)', desc:'Combines term frequency with rarity — better than raw counts'}
+]);
+
+renderDryRun('dryrun', [
+  {
+    title: 'Preprocess: "The Pakistan Cricket Team, led by Salman Agha, won the thrilling match against India!"',
+    steps: [
+      'Clean: "The Pakistan Cricket Team led by Salman Agha won the thrilling match against India"',
+      'Normalize: "the pakistan cricket team led by salman agha won the thrilling match against india"',
+      'Tokenize: ["the","pakistan","cricket","team","led","by","salman","agha","won","the","thrilling","match","against","india"]',
+      'Remove stops: ["pakistan","cricket","team","led","salman","agha","won","thrilling","match","india"]',
+      'Lemmatize: ["pakistan","cricket","team","lead","salman","agha","win","thrilling","match","india"]'
+    ],
+    result: '14 raw tokens → 10 cleaned tokens. Key info preserved.'
+  },
+  {
+    title: 'TF-IDF: 3 documents, compute for word "cricket"',
+    steps: [
+      'Doc1: "pakistan cricket team wins" — cricket appears 1/4',
+      'Doc2: "india cricket board" — cricket appears 1/3',
+      'Doc3: "football world cup" — cricket appears 0/3',
+      'tf("cricket", Doc1) = 1/4 = 0.25',
+      'df("cricket") = 2 (appears in 2 of 3 docs)',
+      'idf("cricket") = log(3/2) = 0.405',
+      'tfidf("cricket", Doc1) = 0.25 × 0.405 = 0.101'
+    ],
+    result: 'TF-IDF("cricket", Doc1) = 0.101. Compare: a word in ALL docs would have idf = log(3/3) = 0'
+  },
+  {
+    title: 'One-Hot Encoding: Vocab = {cat, dog, fish, bird}',
+    steps: [
+      'cat  = [1, 0, 0, 0]',
+      'dog  = [0, 1, 0, 0]',
+      'fish = [0, 0, 1, 0]',
+      'bird = [0, 0, 0, 1]',
+      'cos(cat, dog) = (1×0+0×1+0×0+0×0)/(1×1) = 0',
+      'Problem: "cat" and "dog" are both pets but similarity = 0!'
+    ],
+    result: 'One-hot treats all words as equally different. Need dense embeddings.'
+  }
+]);
+
+renderExercises('exercises', [
+  {q:'What is the main problem with one-hot encoding for NLP?', options:['Too slow','No semantic similarity — all words equidistant','Requires GPUs','Only works for English'], correct:1, explanation:'cos similarity between any two one-hot vectors is 0.'},
+  {q:'If vocabulary V=10,000, what is the dimension of each one-hot vector?', options:['100','1,000','10,000','100,000'], correct:2, explanation:'One-hot vectors are V-dimensional: one position per unique word.'},
+  {q:'What does IDF measure?', options:['Word frequency in a document','How rare a word is across all documents','Sentence length','Grammar correctness'], correct:1, explanation:'IDF = log(N/df) — high for rare words, low for common words.'},
+  {q:'Calculate TF-IDF for "the" if it appears in ALL 100 documents', answer:'idf("the") = log(100/100) = log(1) = 0. TF-IDF = tf × 0 = 0. Common words get zero TF-IDF weight, effectively eliminating them.'},
+  {q:'Lemmatize these words: running, better, went, mice', answer:'running → run, better → good, went → go, mice → mouse. Lemmatization uses dictionary lookup (unlike stemming which just chops suffixes).'}
+]);
+
+renderChecklist('checklist', [
+  'Know the full preprocessing pipeline: clean → normalize → tokenize → stop words → lemmatize',
+  'Distinguish stemming vs lemmatization with examples',
+  'Calculate TF-IDF by hand for a small corpus',
+  'Explain one-hot encoding and its limitations',
+  'Understand POS tagging and NER',
+  'Know WordNet structure: synsets, hypernyms, semantic relations',
+  'Explain why dense embeddings are needed (transition to Week 7)'
+], 'w5');
+</script>
+</body></html>

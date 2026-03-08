@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Week 10 — Seq2Seq &amp; Attention</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div class="topbar">
+  <div class="logo">CS-416 <span>Large Language Models</span></div>
+  <nav><a href="index.html">Home</a></nav>
+</div>
+<div class="week-progress-strip">
+  <div class="bar"><div class="fill" id="weekProgressFill" style="width:0%"></div></div>
+  <span id="weekProgressLabel">0%</span>
+</div>
+<div class="lecture-page">
+<div class="breadcrumb"><a href="index.html">Home</a> / Week 10</div>
+<h1>Lecture 10 — Seq2Seq Models &amp; Attention</h1>
+<div class="meta">20 slides · Encoder-decoder, context vector, attention mechanism</div>
+
+<div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
+<div class="lec-section"><h2>Dry Run — Beam Search &amp; Attention</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
+<div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
+</div>
+<script src="js/lecture.js"></script>
+<script>
+renderSlides('slides', [
+  ['Sequence-to-Sequence Task','Input sequence → output sequence (e.g. translation, summarisation). Lengths may differ.'],
+  ['Encoder-Decoder Architecture','Encoder reads source → fixed-size context vector c. Decoder generates target conditioned on c.'],
+  ['Encoder','Process x₁…xₙ with RNN/LSTM. Final hidden state hₙ = context vector c.'],
+  ['Decoder','At each step: P(yₜ | y₁…yₜ₋₁, c). Autoregressive generation conditioned on context.'],
+  ['Conditional Language Model','Decoder is a language model conditioned on the encoded source. P(y|x) = Πₜ P(yₜ|y₁…yₜ₋₁, c)'],
+  ['Training with Teacher Forcing','During training feed ground truth yₜ₋₁ as input; at test time feed predicted ŷₜ₋₁.'],
+  ['Context Vector Bottleneck','All source info squeezed into one fixed-length vector → information loss for long sequences.'],
+  ['Greedy Decoding','At each step pick argmax. Fast but suboptimal — locally good ≠ globally best.'],
+  ['Beam Search','Keep top-k candidates at each step. Wider beam → better quality, slower.'],
+  ['Beam Search Example','Beam=2: step 1 top-2 → expand each → prune to top-2 → repeat until &lt;EOS&gt;.'],
+  ['Problems with Fixed Context','Long source sentences: encoder must compress too much into single vector.'],
+  ['Attention Mechanism — Idea','Let decoder look at ALL encoder hidden states, not just the last one.'],
+  ['Attention: Score Computation','eᵢⱼ = score(sᵢ, hⱼ). How relevant is encoder state hⱼ to decoder state sᵢ?'],
+  ['Attention: Softmax Weights','αᵢⱼ = softmax(eᵢⱼ) over j. Produces a probability distribution over source positions.'],
+  ['Attention: Context Vector','cᵢ = Σⱼ αᵢⱼ · hⱼ. Weighted sum of encoder states — a soft lookup.'],
+  ['Bahdanau Attention','Additive attention: eᵢⱼ = vᵀ tanh(Wₛsᵢ + Wₕhⱼ). Learnable alignment model.'],
+  ['Luong Attention','Multiplicative: eᵢⱼ = sᵢᵀ Wₐ hⱼ. Simpler, slightly faster. Dot-product variant: sᵢᵀhⱼ.'],
+  ['Attention Visualisation','Alignment matrix shows which source words decoder attends to — interpretable!'],
+  ['Attention Benefits','Solves bottleneck, provides interpretability, handles variable-length input better.'],
+  ['Road to Transformers','Attention is so powerful → "Attention Is All You Need" removes RNN entirely (next lecture).']
+]);
+
+renderMath('math', [
+  {name:'Encoder Final State', formula:'c = hₙ = f(x₁, x₂, …, xₙ)', desc:'All source information compressed into one vector (bottleneck)'},
+  {name:'Decoder Conditional Probability', formula:'P(y|x) = Πₜ₌₁ᵀ P(yₜ | y₁…yₜ₋₁, c)', desc:'Autoregressive: each token conditioned on all previous tokens + context'},
+  {name:'Beam Search Score', formula:'score(y₁…yₜ) = Σₖ₌₁ᵗ log P(yₖ | y₁…yₖ₋₁, c)', desc:'Sum of log probs; keep top-k partial sequences at each step'},
+  {name:'Attention Score (Bahdanau)', formula:'eᵢⱼ = vᵀ tanh(Wₛ sᵢ + Wₕ hⱼ)', desc:'Additive attention — learnable alignment between decoder step i and encoder step j'},
+  {name:'Attention Score (Luong dot)', formula:'eᵢⱼ = sᵢᵀ hⱼ  (or  sᵢᵀ Wₐ hⱼ)', desc:'Multiplicative / dot-product attention — simpler, works well when dims match'},
+  {name:'Attention Weights', formula:'αᵢⱼ = exp(eᵢⱼ) / Σₖ exp(eᵢₖ)', desc:'Softmax over all source positions → probability distribution'},
+  {name:'Attention Context Vector', formula:'cᵢ = Σⱼ₌₁ⁿ αᵢⱼ · hⱼ', desc:'Weighted average of encoder hidden states — different at each decoder step!'},
+  {name:'Decoder with Attention', formula:'P(yₜ | y₁…yₜ₋₁, x) = g(sₜ, cₜ)', desc:'Decoder uses step-specific context cₜ instead of single fixed c'}
+]);
+
+renderDryRun('dryrun', [
+  {
+    title: 'Beam Search (beam=2): translating "je suis" → English',
+    steps: [
+      'Start: &lt;BOS&gt;, score=0',
+      'Step 1 — expand &lt;BOS&gt;: P(I)=0.6, P(He)=0.3, P(She)=0.1',
+      'Top-2 beams: ["I", log0.6= -0.51], ["He", log0.3= -1.20]',
+      'Step 2 — expand "I": P(am)=0.7→score -0.87, P(was)=0.2→ -2.12',
+      'Step 2 — expand "He": P(is)=0.5→score -1.89, P(was)=0.3→ -2.40',
+      'Top-2 across all: ["I am", -0.87], ["He is", -1.89]',
+      'Step 3 — expand both: "I am &lt;EOS&gt;" score=-1.02 ✓, "He is &lt;EOS&gt;" score=-2.15',
+      'Best complete: "I am" with score -1.02'
+    ],
+    result: 'Beam search finds "I am" as best translation. Greedy would also pick "I am" here, but beam helps when early choices affect later probabilities.'
+  },
+  {
+    title: 'Attention weight computation: decoder step i=2',
+    steps: [
+      'Encoder states: h₁=[0.2,0.8], h₂=[0.9,0.1], h₃=[0.5,0.5]',
+      'Decoder state: s₂=[0.7,0.3]',
+      'Dot-product scores: e₂₁=s₂ᵀh₁=0.14+0.24=0.38, e₂₂=0.63+0.03=0.66, e₂₃=0.35+0.15=0.50',
+      'Softmax: exp(0.38)=1.46, exp(0.66)=1.93, exp(0.50)=1.65. Sum=5.04',
+      'α₂₁=1.46/5.04=0.290, α₂₂=1.93/5.04=0.383, α₂₃=1.65/5.04=0.327',
+      'Context: c₂ = 0.290×[0.2,0.8] + 0.383×[0.9,0.1] + 0.327×[0.5,0.5]',
+      'c₂ = [0.058+0.345+0.164, 0.232+0.038+0.164] = [0.567, 0.434]',
+      'Decoder uses c₂ along with s₂ to predict y₂'
+    ],
+    result: 'Highest attention on h₂ (α=0.383) — decoder "looks at" the second source word most for this output step.'
+  }
+]);
+
+renderExercises('exercises', [
+  {q:'What is the bottleneck problem in basic seq2seq?', options:['Too many parameters','Fixed-size context vector must encode entire source','Decoder is too slow','Vocabulary is limited'], correct:1, explanation:'A single fixed-length vector c must compress arbitrarily long input — information loss.'},
+  {q:'Beam search with beam=1 is equivalent to:', options:['Random sampling','Greedy decoding','Exhaustive search','Top-p sampling'], correct:1, explanation:'Beam=1 means keep only top-1 candidate at each step = argmax = greedy.'},
+  {q:'In attention, α₂₃ = 0.7 means:', options:['Encoder state 3 contributes 70% to decoder output 2','70% of source words are attended','The third word is translated','Output word 2 is 70% correct'], correct:0, explanation:'α₂₃ is the weight of encoder hidden state h₃ in the context vector for decoder step 2.'},
+  {q:'Bahdanau attention uses ____ to compute alignment scores:', options:['Dot product only','Additive MLP: vᵀtanh(Ws+Wh)','Cosine similarity','Euclidean distance'], correct:1, explanation:'Bahdanau = additive attention with a small neural network to score alignment.'},
+  {q:'Explain: why does attention give different context vectors at each decoder step?', answer:'At each decoder step i, the attention weights αᵢⱼ are recomputed based on the current decoder state sᵢ vs all encoder states hⱼ. Different sᵢ → different scores → different α → different weighted sum cᵢ. This lets the decoder focus on different parts of the source at each output step.'},
+  {q:'Given encoder states h₁=[1,0], h₂=[0,1] and attention weights α=[0.6, 0.4], compute the context vector.', answer:'c = 0.6×[1,0] + 0.4×[0,1] = [0.6, 0.0] + [0.0, 0.4] = [0.6, 0.4]. The context blends both encoder states proportionally.'}
+]);
+
+renderChecklist('checklist', [
+  'Draw full encoder-decoder architecture with context vector',
+  'Explain the bottleneck problem and why it matters for long inputs',
+  'Know the difference: greedy decoding vs beam search',
+  'Run beam search by hand (beam=2, 3 steps)',
+  'Explain attention: score → softmax → weighted sum',
+  'Know Bahdanau (additive) vs Luong (multiplicative) attention formulas',
+  'Compute attention weights and context vector by hand',
+  'Explain why attention context differs at each decoder step',
+  'Connect: attention → self-attention → Transformer (next topic)'
+], 'w10');
+</script>
+</body></html>

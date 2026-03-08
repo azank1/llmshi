@@ -1,0 +1,111 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Week 1 — Introduction to LLMs</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div class="topbar">
+  <div class="logo">CS-416 <span>Large Language Models</span></div>
+  <nav><a href="index.html">Home</a></nav>
+</div>
+<div class="week-progress-strip">
+  <div class="bar"><div class="fill" id="weekProgressFill" style="width:0%"></div></div>
+  <span id="weekProgressLabel">0%</span>
+</div>
+<div class="lecture-page">
+<div class="breadcrumb"><a href="index.html">Home</a> / Week 1</div>
+<h1>Lecture 01 — Introduction to LLMs</h1>
+<div class="meta">39 slides · Prof. Dr. Faisal Shafait · Lab 1: EasyVQA (ResNet + SBERT)</div>
+
+<div class="lec-section">
+  <h2>Slide Content</h2>
+  <div id="slides"></div>
+</div>
+
+<div class="lec-section">
+  <h2>Key Concepts &amp; Math</h2>
+  <div id="math"></div>
+</div>
+
+<div class="lec-section">
+  <h2>Dry Run — Softmax Calculation</h2>
+  <div id="dryrun"></div>
+</div>
+
+<div class="lec-section">
+  <h2>Exercises</h2>
+  <div id="exercises"></div>
+</div>
+
+<div class="lec-section">
+  <h2>Study Checklist</h2>
+  <div id="checklist"></div>
+</div>
+</div>
+
+<script src="js/lecture.js"></script>
+<script>
+renderSlides('slides', [
+  ['What is Artificial Intelligence?','Power of a machine to copy intelligent human behavior'],
+  ['Goal: Model the human brain','Perceptron algorithm (Rosenblatt 1962) — first neural network'],
+  ['Training AI Systems','Training vs Testing paradigm, generalization'],
+  ['What is Generative AI?','Creates new content based on learned patterns — text, images, code'],
+  ['GenAI vs Traditional AI','Traditional: operates on rules. Generative: creates new data/ideas'],
+  ['Supervised vs Unsupervised vs GenAI','Labeled data → Clusters/Patterns → Novel content generation'],
+  ['ChatGPT Architecture','GPT-1 → GPT-2 → GPT-3 → GPT-4 evolution, transformer-based'],
+  ['Machine vs Human Mind','LLMs read ~52 pages/sec vs humans ~1 page/52sec'],
+  ['Prompt Engineering intro','Crafting specific queries to guide LLM behavior'],
+  ['Generative AI in Digital Economy','Content creation, customer ops, code generation'],
+  ['Course Overview','10 lectures covering NLP → Word2Vec → RNN/LSTM → Seq2Seq → Transformers']
+]);
+
+renderMath('math', [
+  {name:'Perceptron Activation', formula:'y = f(Σ wᵢxᵢ + b)', desc:'Weighted sum of inputs passed through activation function f'},
+  {name:'Sigmoid Function', formula:'σ(z) = 1 / (1 + e⁻ᶻ)', desc:'Squashes any value to range (0,1) — used in binary classification'},
+  {name:'Softmax', formula:'P(class_i) = e^(zᵢ) / Σⱼ e^(zⱼ)', desc:'Converts logits to probability distribution over classes'},
+  {name:'Cross-Entropy Loss', formula:'L = -Σ yᵢ · log(ŷᵢ)', desc:'Measures how different predicted distribution ŷ is from true labels y'},
+  {name:'Gradient Descent', formula:'θ ← θ − α · ∂L/∂θ', desc:'Update parameters θ in direction that minimizes loss, α = learning rate'}
+]);
+
+renderDryRun('dryrun', [
+  {
+    title: 'Softmax: Convert logits [2.0, 1.0, 0.1] to probabilities',
+    steps: [
+      'Compute exponentials: e² = 7.389, e¹ = 2.718, e⁰·¹ = 1.105',
+      'Sum of exponentials: 7.389 + 2.718 + 1.105 = 11.212',
+      'Divide each: P₁ = 7.389/11.212 = 0.659',
+      'P₂ = 2.718/11.212 = 0.242',
+      'P₃ = 1.105/11.212 = 0.099',
+      'Verify: 0.659 + 0.242 + 0.099 = 1.000 ✓'
+    ],
+    result: 'Softmax([2.0, 1.0, 0.1]) = [0.659, 0.242, 0.099]'
+  },
+  {
+    title: 'Cross-Entropy: True=[1,0,0], Predicted=[0.659, 0.242, 0.099]',
+    steps: [
+      'L = -(1·log(0.659) + 0·log(0.242) + 0·log(0.099))',
+      'L = -(1 × (-0.417) + 0 + 0)',
+      'L = 0.417'
+    ],
+    result: 'Loss = 0.417 (lower is better — perfect prediction gives 0)'
+  }
+]);
+
+renderExercises('exercises', [
+  {q:'What distinguishes Generative AI from Traditional AI?', options:['Uses more data','Creates new content vs operating on rules','Is always more accurate','Requires no training'], correct:1, explanation:'Traditional AI follows pre-set rules; GenAI generates novel content.'},
+  {q:'The softmax function guarantees outputs that:', options:['Sum to 0','Are all negative','Sum to 1 and are all positive','Are integers'], correct:2, explanation:'Softmax produces a valid probability distribution.'},
+  {q:'In gradient descent, what does the learning rate α control?', options:['Number of epochs','Size of each parameter update step','Batch size','Model architecture'], correct:1, explanation:'α controls how big each update step is — too large overshoots, too small converges slowly.'},
+  {q:'Cross-entropy loss is 0 when:', options:['All predictions are 0.5','Predicted distribution perfectly matches true labels','Model has no parameters','Training data is small'], correct:1, explanation:'log(1) = 0, so perfect prediction gives zero loss.'},
+  {q:'Calculate: What is σ(0) for the sigmoid function?', answer:'σ(0) = 1/(1+e⁰) = 1/(1+1) = 1/2 = 0.5. The sigmoid of 0 is always 0.5.'}
+]);
+
+renderChecklist('checklist', [
+  'Understand difference between Traditional AI and Generative AI',
+  'Know the evolution: Perceptron → MLP → Deep Learning → Transformers',
+  'Calculate softmax by hand for a 3-class example',
+  'Compute cross-entropy loss given predictions and true labels',
+  'Explain gradient descent update rule',
+  'Describe GPT architecture evolution (GPT-1 through GPT-4)',
+  'Understand training vs testing split paradigm'
+], 'w1');
+</script>
+</body></html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Week 3 — RAG &amp; Tool Augmentation</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div class="topbar">
+  <div class="logo">CS-416 <span>Large Language Models</span></div>
+  <nav><a href="index.html">Home</a></nav>
+</div>
+<div class="week-progress-strip">
+  <div class="bar"><div class="fill" id="weekProgressFill" style="width:0%"></div></div>
+  <span id="weekProgressLabel">0%</span>
+</div>
+<div class="lecture-page">
+<div class="breadcrumb"><a href="index.html">Home</a> / Week 3</div>
+<h1>Lectures 03 &amp; 3b — RAG &amp; Tool Augmentation</h1>
+<div class="meta">33 + 22 slides · Toolformer paper (17pp) · Lab 3: RAG Implementation</div>
+
+<div class="lec-section"><h2>Slide Content — L03 RAG</h2><div id="slides1"></div></div>
+<div class="lec-section"><h2>Slide Content — L3b Tool Augmentation</h2><div id="slides2"></div></div>
+<div class="lec-section"><h2>Key Math &amp; Formulas</h2><div id="math"></div></div>
+<div class="lec-section"><h2>Dry Run — Vector Search</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
+<div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
+</div>
+<script src="js/lecture.js"></script>
+<script>
+renderSlides('slides1', [
+  ['LLM Problems: Hallucinations','Models generate plausible but factually wrong information'],
+  ['Problems: Lack of Attribution','No source citations — can\'t verify claims'],
+  ['Problems: Cost of Training','Training on all knowledge is expensive and stale'],
+  ['Problems: Copyright &amp; Privacy','Training data may contain copyrighted/private info'],
+  ['Problems: Long-Tail Info','LLMs struggle with rare/specialized knowledge'],
+  ['RAG Overview','GOAL: Find subset of documents similar to query, feed as context'],
+  ['Retrieval Methods','Traditional databases vs Vector databases for semantic search'],
+  ['Vector Databases','Store vector embeddings for fast retrieval and similarity search'],
+  ['How Vector DBs Work','Use similarity metric (cosine, dot product) to find nearest vectors'],
+  ['Approximate Nearest Neighbor (ANN)','kNN is exact but slow — ANN trades small accuracy for huge speed gains'],
+  ['Quantization','Map continuous space to finite discrete set to reduce memory'],
+  ['Vector Quantization','Map each vector to nearest centroid from codebook'],
+  ['IVF (Inverted File Index)','Clustering-based ANN: search only most relevant clusters'],
+  ['K-Means Complexity','Cluster assignment + centroid update per iteration'],
+  ['Product Quantization (PQ)','Split vector into sub-vectors, quantize each independently'],
+  ['PQ Lookup Tables','Pre-compute distances between query sub-vectors and centroids'],
+  ['IVF + PQ Pipeline','1. Cluster → 2. Quantize → 3. Query → 4. Rank nearest'],
+  ['Training RAGs','Independent training: retriever and LM trained separately'],
+  ['RAG Benefits','Reduces hallucination, enables real-time info, handles copyright'],
+  ['Multi-Modal RAG','Retrieve images, tables, code alongside text'],
+  ['When to Use RAG','Domain-specific, real-time, citation-needed, large knowledge base']
+]);
+
+renderSlides('slides2', [
+  ['Tool Augmentation Motivation','LLMs can\'t access real-time data, do math, or call APIs natively'],
+  ['Toolformer (Schick et al. 2023)','LLMs teach themselves to use tools — self-supervised approach'],
+  ['Toolformer Pipeline','1. Sample API calls → 2. Execute → 3. Filter useful ones → 4. Fine-tune'],
+  ['Function Calling Overview','User query → LLM identifies function + args → App executes → LLM uses result'],
+  ['FC Step 1','User: "What is my fee payment status?"'],
+  ['FC Step 2','Model outputs: tool_calls=[FunctionCall(name="payment_status", args={"id":"T1001"})]'],
+  ['FC Step 3','App executes function, returns {"status":"Paid"}'],
+  ['FC Step 4','Model generates: "Your fee payment T1001 has been paid."'],
+  ['Tool Definitions','Tools = standardized, reusable, well-documented function interfaces']
+]);
+
+renderMath('math', [
+  {name:'Cosine Similarity', formula:'cos(q, d) = (q · d) / (||q|| · ||d||)', desc:'Measures angle between query and document embeddings — used for retrieval'},
+  {name:'L2 / Euclidean Distance', formula:'d(a,b) = √(Σ (aᵢ - bᵢ)²)', desc:'Straight-line distance in embedding space — smaller = more similar'},
+  {name:'K-Means Objective', formula:'J = Σₖ Σᵢ∈Cₖ ||xᵢ - μₖ||²', desc:'Minimize sum of squared distances from points to their cluster centroid μₖ'},
+  {name:'Product Quantization', formula:'d(q,x) ≈ Σₘ d(qₘ, cₘ(xₘ))', desc:'Approximate full distance as sum of sub-vector distances via lookup table'},
+  {name:'Toolformer Loss Filter', formula:'Keep API call if L(without_call) - L(with_call) > threshold', desc:'Only retain tool calls that reduce language model loss'}
+]);
+
+renderDryRun('dryrun', [
+  {
+    title: 'Cosine Similarity: query=[1,2,3], doc=[2,4,6]',
+    steps: [
+      'Dot product: 1×2 + 2×4 + 3×6 = 2 + 8 + 18 = 28',
+      '||query|| = √(1+4+9) = √14 ≈ 3.742',
+      '||doc|| = √(4+16+36) = √56 ≈ 7.483',
+      'cos = 28 / (3.742 × 7.483) = 28 / 28.0 = 1.0'
+    ],
+    result: 'cos = 1.0 — vectors point in exact same direction (doc is 2× query). Perfect similarity!'
+  },
+  {
+    title: 'IVF Search: 1000 vectors, 10 clusters, nprobe=2',
+    steps: [
+      'Offline: K-means clusters 1000 vectors into 10 groups (~100 each)',
+      'Query arrives: compute distance to 10 centroids',
+      'Pick nprobe=2 closest centroids (say cluster 3 and 7)',
+      'Search only ~200 vectors in those 2 clusters instead of all 1000',
+      'Return top-k nearest from those 200'
+    ],
+    result: 'Speed: search 200/1000 = 80% reduction. Accuracy: may miss items in other clusters.'
+  },
+  {
+    title: 'Product Quantization: 128-dim vector, M=4 sub-vectors',
+    steps: [
+      'Split 128-dim into 4 sub-vectors of 32 dims each',
+      'Each sub-space has 256 centroids (1 byte per sub-vector)',
+      'Original: 128 × 4 bytes = 512 bytes per vector',
+      'PQ compressed: 4 × 1 byte = 4 bytes per vector',
+      'Compression ratio: 512/4 = 128×'
+    ],
+    result: '128× memory reduction with lookup-table based distance computation'
+  }
+]);
+
+renderExercises('exercises', [
+  {q:'What problem does RAG primarily solve?', options:['Speed up training','Reduce hallucinations via external knowledge','Make models smaller','Improve tokenization'], correct:1, explanation:'RAG grounds LLM responses in retrieved documents.'},
+  {q:'In IVF search, what does increasing nprobe do?', options:['Reduces accuracy','Checks more clusters — more accurate but slower','Reduces memory','Changes embedding size'], correct:1, explanation:'Higher nprobe = more clusters searched = better recall but slower.'},
+  {q:'Calculate cosine similarity of [1,0] and [0,1]', answer:'Dot product = 0. ||[1,0]|| = 1, ||[0,1]|| = 1. cos = 0/1 = 0. Orthogonal vectors — no similarity.'},
+  {q:'Product Quantization splits a D-dimensional vector into M sub-vectors. If D=256, M=8, how many dims per sub-vector?', options:['8','32','64','256'], correct:1, explanation:'256/8 = 32 dimensions per sub-vector'},
+  {q:'In Toolformer, how does the model decide which tool calls to keep?', answer:'It compares language model loss with and without the tool call. If loss decreases by more than a threshold, the call is kept — meaning the tool actually helped generate better text.'}
+]);
+
+renderChecklist('checklist', [
+  'Explain 5 problems RAG solves (hallucination, attribution, cost, copyright, long-tail)',
+  'Know cosine similarity vs L2 distance for retrieval',
+  'Understand IVF: clustering → probing → search',
+  'Explain Product Quantization: split, quantize, lookup table',
+  'Describe the full RAG pipeline: embed → store → query → retrieve → generate',
+  'Understand Toolformer self-supervised approach',
+  'Know the 4 steps of Function Calling'
+], 'w3');
+</script>
+</body></html>

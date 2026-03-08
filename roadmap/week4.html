@@ -1,0 +1,99 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Week 4 — Agentic Workflows</title>
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<div class="topbar">
+  <div class="logo">CS-416 <span>Large Language Models</span></div>
+  <nav><a href="index.html">Home</a></nav>
+</div>
+<div class="week-progress-strip">
+  <div class="bar"><div class="fill" id="weekProgressFill" style="width:0%"></div></div>
+  <span id="weekProgressLabel">0%</span>
+</div>
+<div class="lecture-page">
+<div class="breadcrumb"><a href="index.html">Home</a> / Week 4</div>
+<h1>Lecture 04 — Agentic Workflows</h1>
+<div class="meta">36 slides · Lab 4: Building Autonomous AI Agents &amp; Orchestration</div>
+
+<div class="lec-section"><h2>Slide Content</h2><div id="slides"></div></div>
+<div class="lec-section"><h2>Key Concepts</h2><div id="math"></div></div>
+<div class="lec-section"><h2>Dry Run — ReAct Agent Loop</h2><div id="dryrun"></div></div>
+<div class="lec-section"><h2>Exercises</h2><div id="exercises"></div></div>
+<div class="lec-section"><h2>Study Checklist</h2><div id="checklist"></div></div>
+</div>
+<script src="js/lecture.js"></script>
+<script>
+renderSlides('slides', [
+  ['What is a Workflow?','Ordered sequence of steps transforming input → output; defines when/how models, tools, logic are used'],
+  ['Motivation','Programming assignments, research papers follow agentic flow — plan, research, draft, review'],
+  ['HuggingGPT','ChatGPT as controller dispatching to specialized HuggingFace models per subtask'],
+  ['HuggingGPT Pipeline','Task Planning → Model Selection → Task Execution → Response Generation'],
+  ['Why Need Agents?','Plain LLMs: single-turn, no tools, no memory. Agents add loops + tools + persistence'],
+  ['What is an Agent?','LLM + Tools + Memory + Decision Loop → goal-directed behavior'],
+  ['Multi-Agent Systems','Multiple specialized agents collaborating — philosophers chatting, painters, coders'],
+  ['Multi-Agent Collaboration','Debate, review, code-test patterns between agents'],
+  ['Agentic AI Definition','System of multiple agents that collaborate, plan, and execute tasks autonomously'],
+  ['LLM → RAG → Agent → Agentic AI','Progression from simple to complex autonomous systems'],
+  ['Core Agent Loop','Receive goal → Observe → Think → Act → Loop until done'],
+  ['Agentic Frameworks','LangChain, LangGraph, CrewAI, AutoGen — build/manage/control agents'],
+  ['Debugging Agentic Systems','Multiple LLM calls, tool failures, non-deterministic — need observability'],
+  ['MCP (Model Context Protocol)','Anthropic\'s standard for tool communication with agents'],
+  ['A2A (Agent to Agent)','Google\'s protocol for inter-agent communication'],
+  ['Agent Orchestration Patterns','Manager pattern, sequential pipeline, parallel fan-out, debate']
+]);
+
+renderMath('math', [
+  {name:'ReAct Pattern', formula:'Thought → Action → Observation → Thought → ... → Final Answer', desc:'Reasoning + Acting loop — model alternates between thinking and tool use'},
+  {name:'Agent Decision', formula:'action = LLM(goal, observation_history, available_tools)', desc:'At each step, agent decides next action based on accumulated context'},
+  {name:'Tool Schema', formula:'{"name":"search", "params":{"query":"string"}, "returns":"string"}', desc:'Standardized JSON schema defining tool interface for the agent'},
+  {name:'Orchestration Cost', formula:'Total = Σ(LLM_calls × tokens_per_call × cost_per_token) + tool_costs', desc:'Multi-agent workflows multiply API costs — need budgeting'}
+]);
+
+renderDryRun('dryrun', [
+  {
+    title: 'ReAct Agent: "What is 25 × 47 + the population of Islamabad?"',
+    steps: [
+      'Thought: I need to multiply 25×47 and find Islamabad population, then add',
+      'Action: calculator(25 * 47)',
+      'Observation: 1175',
+      'Thought: Now I need Islamabad\'s population',
+      'Action: search("population of Islamabad 2024")',
+      'Observation: ~2.4 million (2,400,000)',
+      'Thought: I have both numbers, now add them',
+      'Action: calculator(1175 + 2400000)',
+      'Observation: 2401175',
+      'Final Answer: 25 × 47 + population of Islamabad ≈ 2,401,175'
+    ],
+    result: 'Agent used 3 tool calls: 2 calculator + 1 search. ReAct loop ran 3 iterations.'
+  },
+  {
+    title: 'Sequential Pipeline: Research → Write → Review',
+    steps: [
+      'Agent 1 (Researcher): Search web for "transformer architecture" → returns 5 key points',
+      'Agent 2 (Writer): Takes research output → writes 500-word blog post',
+      'Agent 3 (Reviewer): Reads blog → IF issues found → route back to Writer, ELSE → END',
+      'Writer revises based on feedback → Reviewer approves → Final output'
+    ],
+    result: 'Sequential orchestration with conditional routing (review loop).'
+  }
+]);
+
+renderExercises('exercises', [
+  {q:'What are the 3 key components of an AI Agent beyond the LLM?', options:['Data, GPU, API','Tools, Memory, Decision Loop','Frontend, Backend, Database','Encoder, Decoder, Attention'], correct:1, explanation:'Agent = LLM + Tools + Memory + Decision Loop'},
+  {q:'In the ReAct pattern, what alternates?', options:['Training and testing','Encoding and decoding','Reasoning (Thought) and Acting (Tool use)','Reading and writing'], correct:2, explanation:'ReAct = Reasoning + Acting in an iterative loop'},
+  {q:'What is MCP?', options:['Multi-Channel Processing','Model Context Protocol','Machine Code Parser','Memory Cache Protocol'], correct:1, explanation:'Anthropic\'s Model Context Protocol standardizes tool communication with agents.'},
+  {q:'Design a 2-agent system for code review', answer:'Agent 1 (Coder): Receives task description → writes Python code. Agent 2 (Reviewer): Reads code → runs linter/tests → provides feedback with line-by-line comments. Routing: If Reviewer finds issues → back to Coder with feedback. If all tests pass → END. Use LangGraph with conditional edges.'}
+]);
+
+renderChecklist('checklist', [
+  'Define: Workflow, Agent, Multi-Agent System, Agentic AI',
+  'Draw the core agent loop (Observe → Think → Act)',
+  'Explain ReAct pattern with an example',
+  'Know HuggingGPT 4-stage pipeline',
+  'Understand MCP and A2A protocols',
+  'Describe 3 orchestration patterns (sequential, manager, debate)',
+  'Identify debugging challenges in multi-agent systems'
+], 'w4');
+</script>
+</body></html>
